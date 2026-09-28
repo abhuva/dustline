@@ -100,6 +100,10 @@ if(process.argv.includes('--prepare')) {
     ]);
     const expected=await readFile(new URL(`${i}.result`,out));assert.deepEqual(actual,expected,`native/WASM ${i}: ${f.tag}`);
   }
+  const library=JSON.parse(await readFile(new URL('maps/map-library.json',root),'utf8')),active=library.maps.find(entry=>entry.id==='wasteland').recipe,program=compile(active,schema).program;
+  engine.HEAPU32.set(new Uint32Array(program.flat()),engine._recipe_input()>>>2);assert.equal(engine._recipe_run(program.length,active.seed),0);assert.equal(engine._recipe_apply_exits(15),0);
+  const cells=engine.HEAPU8.slice(engine._recipe_cells(),engine._recipe_cells()+4096);assert.equal(cells[31],0);assert.equal(cells[31*64+63],0);assert.equal(cells[63*64+31],0);assert.equal(cells[31*64],0);
+  const reserved=engine._recipe_reserved();assert.ok(engine.HEAPU8.slice(reserved,reserved+1024*1024).some(Boolean));
   const report={cases:fixtures.length,legacySeeds:128,nativeWasmByteParity:true,graphValidation:true,wasmSha256:(await import('node:crypto')).createHash('sha256').update(await readFile(new URL('tools/map_editor/generated/engine.wasm',root))).digest('hex')};
   await mkdir(new URL('artifacts/map_editor/',root),{recursive:true});
   await writeFile(new URL('artifacts/map_editor/parity-results.json',root),JSON.stringify(report,null,2)+'\n');

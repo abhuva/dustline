@@ -2,6 +2,7 @@
 #include "wasteland_tiles.h"
 #include "enemy_spawns.h"
 #include "decoration_layout.h"
+#include "cardinal_exit.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -43,7 +44,9 @@ extern "C" {
 mapgen::node* recipe_input() { return nodes; }
 uint8_t* recipe_material_textures() { ensure_material_lookups();return material_textures; }
 uint8_t* recipe_material_surfaces() { ensure_material_lookups();return material_surfaces; }
-const uint8_t* recipe_cells() { return result.data; }
+const uint8_t* recipe_cells() {
+    return world_ready && result.type==mapgen::kind::world?work.layout.cells():result.data;
+}
 const uint32_t* recipe_meta() { return metadata; }
 int recipe_run(int count,uint32_t seed) {
     result=mapgen::execute(nodes,count,seed,work);
@@ -108,6 +111,15 @@ int recipe_connect_portal(int x,int y) {
     if(!world_ready || !work.roads.width)return 0;
     return work.roads.connect_portal(work.layout,work.scratch,x,y)?0:1;
 }
+int recipe_apply_exits(int mask) {
+    if(!world_ready || result.type!=mapgen::kind::world)return 0;
+    if(mask && !work.roads.width)return mask;
+    int failed=0;
+    for(int side=0;side<4;++side)if(mask&(1<<side))
+        if(!cardinal_exit::apply(work.layout,work.roads,work.scratch,cardinal_exit::side(side)))failed|=1<<side;
+    cardinal_exit::finalize(work.layout,uint8_t(mask));
+    return failed;
+}
 const uint8_t* recipe_ground() {
     if(!world_ready)return nullptr;
     if(!ground_active)for(int y=0;y<64;++y)for(int x=0;x<64;++x)ground[y*64+x]=uint8_t(work.layout.material(x*128+64,y*128+64));
@@ -129,6 +141,13 @@ const uint8_t* recipe_roads() {
     for(int y=0;y<1024;++y)for(int x=0;x<1024;++x)
         road_pixels[y*1024+x]=uint8_t(work.roads.contains(x*8+4,y*8+4));
     return road_pixels;
+}
+const uint8_t* recipe_reserved() {
+    if(!world_ready)return nullptr;
+    auto* pixels=reinterpret_cast<uint8_t*>(render_tiles);
+    for(int y=0;y<1024;++y)for(int x=0;x<1024;++x)
+        pixels[y*1024+x]=uint8_t(work.roads.is_reserved(x/16,y/16));
+    return pixels;
 }
 const uint16_t* recipe_tiles() {
     if(!world_ready)return nullptr;

@@ -52,7 +52,7 @@ let zoom=1,panX=0,panY=0;
 let placementSelection=null,placementZoom=1,placementPanX=0,placementPanY=0,placementDrag=null,placementAddKind=null;
 let pinnedSettings = null;
 let lutHistogram=null,lutHistogramNode=null,lutPointSelection=null;
-let renderRequest=0,renderUrl=null,renderBlob=null,renderSeed=0,renderBusy=false;
+let renderRequest=0,renderUrl=null,renderBlob=null,renderSeed=0,renderBusy=false,atlasRequest=0;
 let cancelConnectionDrag = null, suppressPortClick = false;
 try {
   const saved=JSON.parse(localStorage.getItem('dustline.map-draft.v1'));
@@ -63,6 +63,7 @@ try {
 const worker = new Worker('./worker.mjs', {type:'module'});
 worker.onerror = event => message(`Engine could not load: ${event.message}. Run ./map-editor.ps1 to rebuild it.`, 'error');
 worker.onmessage = ({data}) => {
+  if(data.atlas){if(data.id!==atlasRequest)return;drawAtlas(data.maps);$('atlas-status').textContent=`${data.maps.length} regions · derived from reciprocal connections`;return;}
   if(data.render){
     if(data.id!==renderRequest)return;
     if(data.error){renderBusy=false;$('render-status').textContent=data.error;$('render-map').disabled=false;return;}
@@ -577,7 +578,7 @@ function generate() {
     message(exportError || 'Generating…',exportError?'warning':'');
     const categoricalColors=node?.type==='field_lut'?lutPreviewColors(node):null;
     const schematic=view==='placements';
-    worker.postMessage({id:sequence,mapId:currentId,program:compiled.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,portals:recipe.portals,playerSpawns:recipe.playerSpawns,histogramProgram,histogramNode:histogramProgram?settingsNode.id:null,categorical:!!categoricalColors,categoricalColors,showSpawns:$('show-spawns').checked,seed:recipe.seed,schematic,collision:(schematic||$('layer').value==='collision')&&!seeds,textures:!schematic&&$('layer').value==='textures',seeds,compare});
+    worker.postMessage({id:sequence,mapId:currentId,program:compiled.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,exitMask:worldExitMask(currentId),portals:recipe.portals,playerSpawns:recipe.playerSpawns,histogramProgram,histogramNode:histogramProgram?settingsNode.id:null,categorical:!!categoricalColors,categoricalColors,showSpawns:$('show-spawns').checked,seed:recipe.seed,schematic,collision:(schematic||$('layer').value==='collision')&&!seeds,textures:!schematic&&$('layer').value==='textures',seeds,compare});
   } catch(error) {
     $('export').disabled=true; $('preview').setAttribute('aria-busy','false');
     $('preview-label').textContent='INVALID GRAPH · PREVIOUS PREVIEW'; message(error.message,'error');
@@ -632,13 +633,14 @@ function placementScreen(x,y){const size=640*placementZoom;return {x:placementPa
 function placementWorld(x,y){const size=640*placementZoom;return {x:Math.max(0,Math.min(8191,Math.round((x-placementPanX)/size*8192/8)*8)),y:Math.max(0,Math.min(8191,Math.round((y-placementPanY)/size*8192/8)*8))};}
 function schematicCanvas(output){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const ctx=canvas.getContext('2d'),pixels=ctx.createImageData(1024,1024);
-  const collision=output.refined??new Uint8Array(1024*1024),roads=output.roads??new Uint8Array(1024*1024);
-  for(let i=0;i<collision.length;++i){const color=collision[i]?[34,57,47]:roads[i]?[177,137,80]:[202,187,145];pixels.data.set([...color,255],i*4);}
+  const collision=output.refined??new Uint8Array(1024*1024),roads=output.roads??new Uint8Array(1024*1024),reserved=output.reserved??new Uint8Array(1024*1024);
+  for(let i=0;i<collision.length;++i){const color=collision[i]?[34,57,47]:reserved[i]?[224,169,70]:roads[i]?[177,137,80]:[202,187,145];pixels.data.set([...color,255],i*4);}
   ctx.putImageData(pixels,0,0);return canvas;
 }
 function drawPlacementView(ctx,output){
   const size=640*placementZoom;ctx.drawImage(schematicCanvas(output),placementPanX,placementPanY,size,size);
   for(let index=0;index<6;++index){const town=placementScreen(output.meta[8+index*2],output.meta[9+index*2]-32);ctx.fillStyle='#e7f6bcbb';ctx.strokeStyle='#253b2b';ctx.lineWidth=1.5;ctx.fillRect(town.x-5,town.y-5,10,10);ctx.strokeRect(town.x-5,town.y-5,10,10);ctx.fillStyle='#17211b';ctx.font='8px Consolas';ctx.fillText(`T${index+1}`,town.x-4,town.y+3);}
+  for(let side=0;side<4;++side)if(output.exitMask&(1<<side)){const centres=[[4096,96],[8096,4096],[4096,8096],[96,4096]],arrivals=[[4096,448],[7744,4096],[4096,7744],[448,4096]],trigger=placementScreen(...centres[side]),arrival=placementScreen(...arrivals[side]);ctx.fillStyle='#55d8df44';ctx.strokeStyle='#55d8df';ctx.lineWidth=2;const horizontal=side%2===0,width=(horizontal?384:192)/8192*size,height=(horizontal?192:384)/8192*size;ctx.fillRect(trigger.x-width/2,trigger.y-height/2,width,height);ctx.strokeRect(trigger.x-width/2,trigger.y-height/2,width,height);ctx.fillStyle='#fff8cf';ctx.beginPath();ctx.arc(arrival.x,arrival.y,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#17211b';ctx.stroke();}
   const invalid=new Set(output.invalidPortals??[]),invalidSpawns=new Set(output.invalidPlayerSpawns??[]);
   for(const {kind,item} of placementItems()){
     const point=placementScreen(item.x,item.y),isSelected=placementSelection===placementKey(kind,item.id);ctx.save();
@@ -656,7 +658,7 @@ function draw(data) {
   const first=data.outputs[0],grid=data.outputs.length>1;
   const categoricalColors=data.categorical?data.categoricalColors??[]:null;
   const placementView=$('view').value==='placements';
-  const legend=placementView?[['Floor','#cabb91'],['Wall','#22392f'],['Road','#b18950'],['Portal','#efad43'],['Player Spawn','#55d8df']]:categoricalColors?[...new Set(first.cells)].sort((a,b)=>a-b).map(value=>[`Output ${value}`,categoricalColors[value]??defaultLutColor(value)]):
+  const legend=placementView?[['Floor','#cabb91'],['Wall','#22392f'],['Road','#b18950'],['Exit corridor','#e0a946'],['Trigger','#55d8df'],['Arrival','#fff8cf'],['Manual spawn','#55d8df']]:categoricalColors?[...new Set(first.cells)].sort((a,b)=>a-b).map(value=>[`Output ${value}`,categoricalColors[value]??defaultLutColor(value)]):
     first.meta[1]===3 || first.texture ? materialCatalog.map(m=>[m.name,m.color]) : [['Floor','#d8b77b'],['Wall','#28483d'],['Spawn','#f08b5b'],['Outpost','#e7f6bc']];
   if(first.spawns && $('show-spawns').checked)for(const profile of recipe.spawnProfiles)legend.push([profile.name,profile.color]);
   $('legend').replaceChildren(...legend.map(([name,color])=>{const item=element('span'),swatch=element('i');swatch.style.background=color;item.append(swatch,document.createTextNode(name));return item;}));
@@ -915,6 +917,7 @@ $('close-shop').onclick=()=>$('shop-dialog').close();
 function effectiveWorldMaps(){
   return library.maps.map(entry=>entry.id===currentId&&dirty?{...entry,includeInGame,recipe}:entry).filter(entry=>entry.includeInGame);
 }
+function worldExitMask(mapId,world=library.world){let mask=0;for(const link of world?.connections??[]){if(link.a?.map===mapId)mask|=1<<cardinalSides.indexOf(link.a.side);if(link.b?.map===mapId)mask|=1<<cardinalSides.indexOf(link.b.side);}return mask;}
 function mapPlayerSpawnIds(entry){return entry.recipe.playerSpawns.map(item=>item.id);}
 function resetWorldDraft(){
   const snapshot={maps:effectiveWorldMaps().map(clone),world:clone(library.world??{})};reconcileWorld(snapshot);worldDraft=snapshot.world;
@@ -1008,6 +1011,14 @@ $('save-world').onclick=async()=>{
     resetWorldDraft();renderWorldGraph();$('world-status').textContent='World routes saved to maps/map-library.json.';
   }catch(saveError){$('world-status').textContent=saveError.message;}
 };
+function drawAtlas(maps){
+  const tile=128,padding=28,minX=Math.min(...maps.map(map=>map.grid[0])),minY=Math.min(...maps.map(map=>map.grid[1])),maxX=Math.max(...maps.map(map=>map.grid[0])),maxY=Math.max(...maps.map(map=>map.grid[1])),canvas=$('atlas-canvas');canvas.width=(maxX-minX+1)*tile+padding*2;canvas.height=(maxY-minY+1)*tile+padding*2;const ctx=canvas.getContext('2d');ctx.fillStyle='#0d1511';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.font='8px Consolas';ctx.textBaseline='top';
+  for(const map of maps){const ox=padding+(map.grid[0]-minX)*tile,oy=padding+(map.grid[1]-minY)*tile,image=ctx.createImageData(tile,tile);for(let y=0;y<tile;++y)for(let x=0;x<tile;++x){const wall=map.cells[(y>>1)*64+(x>>1)],road=map.roads[y*tile+x],color=wall?[34,57,47]:road?[177,137,80]:[202,187,145];image.data.set([...color,255],(y*tile+x)*4);}ctx.putImageData(image,ox,oy);ctx.strokeStyle='#eac35b';ctx.strokeRect(ox+.5,oy+.5,tile-1,tile-1);for(let town=0;town<6;++town){const x=ox+map.meta[8+town*2]/64,y=oy+map.meta[9+town*2]/64;ctx.fillStyle='#effbc6';ctx.fillRect(x-2,y-2,4,4);}ctx.fillStyle='#102019dd';ctx.fillRect(ox+3,oy+3,Math.min(120,map.id.length*5+6),12);ctx.fillStyle='#effbc6';ctx.fillText(map.id,ox+6,oy+5);}
+  const zoom=Number($('atlas-zoom').value);canvas.style.width=`${canvas.width*zoom}px`;canvas.style.height=`${canvas.height*zoom}px`;
+}
+$('open-atlas').onclick=()=>{const maps=effectiveWorldMaps(),derived=derivedWorldGrid(maps);if(derived.error){$('world-status').textContent=derived.error;return;}atlasRequest++;$('atlas-status').textContent='Generating clean schematics…';$('atlas-dialog').showModal();const payload=maps.map(entry=>{const compiled=compile(entry.recipe,schema);if(compiled.kind!=='world')throw new Error(`${entry.id} needs a Playable world output.`);const coordinate=derived.coordinates.get(entry.id);return {id:entry.id,program:compiled.program,seed:entry.recipe.seed,exitMask:worldExitMask(entry.id,worldDraft),grid:[coordinate[0],coordinate[1]]};});worker.postMessage({id:atlasRequest,atlas:true,maps:payload});};
+$('atlas-zoom').onchange=()=>{const canvas=$('atlas-canvas'),zoom=Number($('atlas-zoom').value);canvas.style.width=`${canvas.width*zoom}px`;canvas.style.height=`${canvas.height*zoom}px`;};
+$('close-atlas').onclick=()=>$('atlas-dialog').close();
 document.querySelector('.section-label span').textContent=schema.operations.length;
 syncMaterialCatalog();
 schema.operations.forEach(op=>{
@@ -1117,7 +1128,7 @@ $('render-map').onclick=()=>{
     $('render-image').removeAttribute('src');$('render-status').textContent='Rendering full map…';$('render-dialog').showModal();
     const spawnProgram=recipe.spawnOutput==null?null:compile(previewRecipe,schema,recipe.spawnOutput).program;
     const decorationProgram=recipe.decorationOutput==null?null:compile(previewRecipe,schema,recipe.decorationOutput).program;
-    worker.postMessage({id:renderRequest,render:true,mapId:currentId,program:world.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,portals:recipe.portals,playerSpawns:recipe.playerSpawns,showSpawns:$('show-spawns').checked,seed:recipe.seed});
+    worker.postMessage({id:renderRequest,render:true,mapId:currentId,program:world.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,exitMask:worldExitMask(currentId),portals:recipe.portals,playerSpawns:recipe.playerSpawns,showSpawns:$('show-spawns').checked,seed:recipe.seed});
   }catch(error){message(error.message,'error');}
 };
 $('close-render').onclick=()=>$('render-dialog').close();
