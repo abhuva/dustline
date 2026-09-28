@@ -1,7 +1,8 @@
 # Dustline
 
-[![Build and publish ROM](https://github.com/abhuva/dirtline/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/abhuva/dirtline/actions/workflows/release.yml)
-[![Download latest ROM](https://img.shields.io/badge/download-latest%20ROM-d8a657)](https://github.com/abhuva/dirtline/releases/latest/download/dustline.gba)
+[![Build and publish ROM](https://github.com/abhuva/Dustline/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/abhuva/Dustline/actions/workflows/release.yml)
+[![Build and publish website](https://github.com/abhuva/Dustline/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/abhuva/Dustline/actions/workflows/docs.yml)
+[![Download latest ROM](https://img.shields.io/badge/download-latest%20ROM-d8a657)](https://github.com/abhuva/Dustline/releases/latest/download/dustline.gba)
 [![License: CC BY-SA 4.0](https://img.shields.io/badge/license-CC%20BY--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-sa/4.0/)
 
 An original driving and combat RPG prototype built for the Game Boy Advance.
@@ -13,7 +14,7 @@ vehicle setups.
 
 ## Play the latest build
 
-Download **[dustline.gba](https://github.com/abhuva/dirtline/releases/latest/download/dustline.gba)**
+Download **[dustline.gba](https://github.com/abhuva/Dustline/releases/latest/download/dustline.gba)**
 from the latest release and open it with [mGBA](https://mgba.io/) or RetroArch's
 Nintendo - Game Boy Advance (mGBA) core. This is a complete homebrew ROM; no base
 game, patch, or GBA BIOS is required.
@@ -145,9 +146,12 @@ see source-art changes or a newly packed profile in the game-texture preview.
 ## Continuous delivery
 
 Every push to `main` runs the reproducible container build in GitHub Actions and
-replaces the rolling **[Latest playable build](https://github.com/abhuva/dirtline/releases/latest)**.
+replaces the rolling **[Latest playable build](https://github.com/abhuva/Dustline/releases/latest)**.
 The release contains the raw ROM, its SHA-256 checksum, and a ZIP with the ROM,
 play notes, and third-party notices.
+
+The same push builds the [Dustline website and documentation](https://abhuva.github.io/dustline/)
+with Zensical and publishes it through GitHub Pages.
 
 ## Project direction
 
