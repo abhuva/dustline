@@ -3,6 +3,7 @@
 #include "wasteland.h"
 #include "generated/wasteland_art.h"
 #include "generated/wasteland_recipe.h"
+#include "cardinal_exit.h"
 
 namespace world_map {
 namespace {
@@ -61,18 +62,32 @@ uint32_t catalog_signature() {
     }
     return result;
 }
-int portal_count() { return map_catalog::maps[selected].portal_count; }
-portal_info portal(int index) {
-    BN_ASSERT(index>=0 && index<portal_count(),"Invalid world portal index");
-    const auto& value=map_catalog::maps[selected].portals[index];
-    return {value.x,value.y,value.width,value.height,value.destination_map,value.destination_spawn};
+int exit_count() {
+    int result=0,mask=exit_mask();for(int side=0;side<4;++side)result+=(mask>>side)&1;return result;
 }
-int nearby_portal(int x,int y) {
+int exit_mask() { return map_catalog::maps[selected].exit_mask; }
+int exit_side(int ordinal) {
+    for(int side=0;side<4;++side)if(exit_mask()&(1<<side))if(ordinal--==0)return side;
+    return -1;
+}
+exit_info exit(int side) {
+    BN_ASSERT(side>=0 && side<4 && (exit_mask()&(1<<side)),"Invalid cardinal world exit");
+    const auto& value=map_catalog::maps[selected].exits[side];
+    const auto zone=cardinal_exit::trigger(cardinal_exit::side(side));
+    return {zone.x+zone.width/2,zone.y+zone.height/2,zone.width,zone.height,
+            value.destination_map,value.destination_side};
+}
+player_spawn_info exit_arrival(int side) {
+    BN_ASSERT(side>=0 && side<4,"Invalid arrival side");
+    const auto value=cardinal_exit::arrival_for(cardinal_exit::side(side));
+    return {value.x,value.y,value.heading};
+}
+int nearby_exit(int x,int y) {
     const auto& entry=map_catalog::maps[selected];
-    for(int index=0;index<entry.portal_count;++index) {
-        const auto& value=entry.portals[index];
-        if(value.destination_map>=0 && bn::abs(x-int(value.x))*2<int(value.width) &&
-           bn::abs(y-int(value.y))*2<int(value.height))return index;
+    for(int side=0;side<4;++side)if(entry.exit_mask&(1<<side)) {
+        const auto value=exit(side);
+        if(value.destination_map>=0 && bn::abs(x-value.x)*2<value.width &&
+           bn::abs(y-value.y)*2<value.height)return side;
     }
     return -1;
 }
@@ -82,9 +97,9 @@ player_spawn_info player_spawn(int index) {
     const auto& value=map_catalog::maps[selected].player_spawns[index];
     return {value.x,value.y,value.heading};
 }
-int route_portal(int target_map) {
+int route_exit(int target_map) {
     if(target_map<0 || target_map>=map_catalog::count)return -1;
-    return map_catalog::next_portal[selected*map_catalog::count+target_map];
+    return map_catalog::next_exit[selected*map_catalog::count+target_map];
 }
 int route_distance(int from_map,int to_map) {
     if(from_map<0 || from_map>=map_catalog::count || to_map<0 || to_map>=map_catalog::count)return -1;

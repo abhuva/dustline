@@ -38,8 +38,8 @@ world_overview::world_overview(int player_x,int player_y) :
             if(xx==0 || yy==0)plot(x+xx,y+yy,4);
     }
     // Portals are authored navigation exits, shown as compact green squares.
-    for(int index=0;index<world_map::portal_count();++index) {
-        const auto portal=world_map::portal(index);
+    for(int side=0;side<4;++side)if(world_map::exit_mask()&(1<<side)) {
+        const auto portal=world_map::exit(side);
         const int x=bn::max(1,bn::min(pixel_size-2,portal.x/world_scale));
         const int y=bn::max(1,bn::min(pixel_size-2,portal.y/world_scale));
         for(int yy=-1;yy<=1;++yy)for(int xx=-1;xx<=1;++xx)plot(x+xx,y+yy,6);

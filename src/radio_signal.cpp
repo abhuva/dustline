@@ -58,8 +58,8 @@ bool away_from_towns(int cell_x,int cell_y) {
 }
 
 bool away_from_portals(int cell_x,int cell_y) {
-    for(int index=0;index<world_map::portal_count();++index) {
-        const auto portal=world_map::portal(index);
+    for(int side=0;side<4;++side)if(world_map::exit_mask()&(1<<side)) {
+        const auto portal=world_map::exit(side);
         if(absolute(cell_x-portal.x/cave_layout::cell_size)<=2 &&
            absolute(cell_y-portal.y/cave_layout::cell_size)<=2)return false;
     }

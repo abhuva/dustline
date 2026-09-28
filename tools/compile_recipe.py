@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from art_profiles import load_catalog as load_art_catalog, profile_key, profiles_for_entries, validate_profile
 from shop_catalog import TOWN_COUNT, load_catalog as load_shop_catalog, normalize_profile as normalize_shop_profile, resolve_inventory
+import world_grid
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = json.loads((ROOT / 'tools/map_editor/schema.json').read_text())
@@ -297,7 +298,7 @@ def reconcile_world(library, enabled, portals, player_spawns):
                         'nodes': nodes, 'connections': connections}
 
 
-def validate_library(library, compile_maps=True):
+def validate_library(library, compile_maps=True, release=True):
     """Validate the shared editor/ROM catalog and return its enabled entries.
 
     Draft recipes intentionally receive only bounded structural checks. They
@@ -352,8 +353,6 @@ def validate_library(library, compile_maps=True):
         if entry['includeInGame']:
             if not nodes:
                 raise ValueError(f'Map {map_id} is enabled but its graph is empty')
-            if not map_portals:
-                raise ValueError(f'Map {map_id} is enabled but has no portals')
             if not map_player_spawns:
                 raise ValueError(f'Map {map_id} is enabled but has no player spawns')
             try:
@@ -376,44 +375,8 @@ def validate_library(library, compile_maps=True):
         map_portals, map_spawns = placements(entry['recipe'], entry['id'])
         portals[entry['id']] = {item['id']: item for item in map_portals}
         player_spawns[entry['id']] = {item['id']: item for item in map_spawns}
-    reconcile_world(library, enabled, portals, player_spawns)
-    world = library.get('world')
-    if not isinstance(world, dict) or world.get('version') != 2:
-        raise ValueError('The map library needs a version 2 world graph')
-    start = world.get('start')
-    if not isinstance(start, dict) or start.get('map') not in enabled_ids or \
-       start.get('spawn') not in player_spawns[start.get('map')]:
-        raise ValueError('The world start must reference an enabled map and player spawn')
-    positions = world.get('nodes')
-    if not isinstance(positions,list):
-        raise ValueError('World graph nodes must be a list')
-    positioned = set()
-    for node in positions:
-        if not isinstance(node,dict) or node.get('map') not in enabled_ids or node['map'] in positioned:
-            raise ValueError('World graph map nodes must uniquely reference enabled maps')
-        integer(node.get('x'),0,10000,'World graph X')
-        integer(node.get('y'),0,10000,'World graph Y')
-        positioned.add(node['map'])
-    if positioned != enabled_ids:
-        raise ValueError('Every enabled map needs one world graph node')
-    links = world.get('connections')
-    if not isinstance(links,list) or len(links)>256:
-        raise ValueError('World graph connections must be a bounded list')
-    used = set()
-    for link in links:
-        if not isinstance(link,dict):
-            raise ValueError('World transitions must be objects')
-        source,destination=link.get('from'),link.get('to')
-        if not isinstance(source,dict) or source.get('map') not in enabled_ids or \
-           source.get('portal') not in portals[source.get('map')]:
-            raise ValueError('World transition references a missing source portal')
-        if not isinstance(destination,dict) or destination.get('map') not in enabled_ids or \
-           destination.get('spawn') not in player_spawns[destination.get('map')]:
-            raise ValueError('World transition references a missing destination player spawn')
-        key=(source['map'],source['portal'])
-        if key in used:
-            raise ValueError(f'World portal {key[0]}.{key[1]} has more than one destination')
-        used.add(key)
+    world_grid.reconcile_world(library, enabled, player_spawns)
+    world_grid.validate_world(library['world'], enabled_ids, player_spawns, release)
     return enabled
 
 
@@ -421,10 +384,10 @@ def library_revision(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def load_library(path=LIBRARY_PATH, compile_maps=True):
+def load_library(path=LIBRARY_PATH, compile_maps=True, release=True):
     data = path.read_bytes()
     library = json.loads(data)
-    enabled = validate_library(library, compile_maps)
+    enabled = validate_library(library, compile_maps, release)
     return library, enabled, library_revision(data)
 
 
@@ -442,41 +405,38 @@ def generate():
     shop_catalog = load_shop_catalog(map_ids={entry['id'] for entry in library['maps']})
     _, bank_indices, bank_keys = profiles_for_entries(entries, art_catalog)
     map_indices = {entry['id']: index for index,entry in enumerate(entries)}
-    portal_lists = [entry['recipe']['portals'] for entry in entries]
     player_spawn_lists = [entry['recipe']['playerSpawns'] for entry in entries]
-    portal_indices = [{item['id']: index for index,item in enumerate(items)} for items in portal_lists]
     player_spawn_indices = [{item['id']: index for index,item in enumerate(items)} for items in player_spawn_lists]
-    transitions = [[(-1,-1) for _ in items] for items in portal_lists]
+    exits = [[(-1, (side + 2) & 3) for side in range(4)] for _ in entries]
+    side_index = world_grid.SIDE_INDEX
     for link in library['world']['connections']:
-        source,destination=link['from'],link['to']
-        source_map,destination_map=map_indices[source['map']],map_indices[destination['map']]
-        portal=portal_indices[source_map][source['portal']]
-        spawn=player_spawn_indices[destination_map][destination['spawn']]
-        transitions[source_map][portal]=(destination_map,spawn)
+        a,b=link['a'],link['b'];a_map,b_map=map_indices[a['map']],map_indices[b['map']]
+        a_side,b_side=side_index[a['side']],side_index[b['side']]
+        exits[a_map][a_side]=(b_map,b_side);exits[b_map][b_side]=(a_map,a_side)
     adjacency=[[] for _ in entries]
-    for source,rows in enumerate(transitions):
-        for portal,(destination,_) in enumerate(rows):
-            if destination>=0:adjacency[source].append((destination,portal))
-    next_portal=[[-1]*len(entries) for _ in entries]
+    for source,rows in enumerate(exits):
+        for side,(destination,_) in enumerate(rows):
+            if destination>=0:adjacency[source].append((destination,side))
+    next_exit=[[-1]*len(entries) for _ in entries]
     route_distance=[[255]*len(entries) for _ in entries]
     for source in range(len(entries)):
         route_distance[source][source]=0;queue=[source]
         while queue:
             at=queue.pop(0)
-            for destination,portal in adjacency[at]:
+            for destination,side in adjacency[at]:
                 if route_distance[source][destination]!=255:continue
                 route_distance[source][destination]=route_distance[source][at]+1
-                next_portal[source][destination]=portal if at==source else next_portal[source][at]
+                next_exit[source][destination]=side if at==source else next_exit[source][at]
                 queue.append(destination)
     text = '// Generated from maps/map-library.json ('+revision[:12]+'). Do not edit.\n#pragma once\n#include "map_recipe.h"\n#include "spawn_profiles.h"\n'
-    text += 'namespace map_catalog {\nstruct portal {\n    const char* id; uint16_t x,y,width,height; int8_t destination_map,destination_spawn;\n};\n'
+    text += 'namespace map_catalog {\nstruct cardinal_exit { int8_t destination_map,destination_side; };\n'
     text += 'struct player_spawn { const char* id; uint16_t x,y; int16_t heading; };\n'
     text += 'struct shop_inventory { uint8_t count; uint8_t save_ids[9]; };\n'
     text += 'struct entry {\n    const char* id; const char* name; uint32_t seed; int art_bank;\n'
     text += '    const mapgen::node* nodes; int count;\n    const mapgen::node* material_nodes; int material_count;\n'
     text += '    const mapgen::node* spawn_nodes; int spawn_count;\n    const mapgen::node* decoration_nodes; int decoration_count;\n'
     text += '    const spawn_profiles::profile* spawn_profiles; int spawn_profile_count;\n'
-    text += '    const portal* portals; int portal_count; const player_spawn* player_spawns; int player_spawn_count;\n'
+    text += '    const cardinal_exit* exits; uint8_t exit_mask; int8_t grid_x,grid_y; const player_spawn* player_spawns; int player_spawn_count;\n'
     text += '    const shop_inventory* shops;\n};\n'
     compiled = []
     for index, entry in enumerate(entries):
@@ -499,11 +459,9 @@ def generate():
                      ','+str(profile['energyChance'])+','+str(profile['energyMin'])+','+
                      str(profile['energyMax'])+'},\n')
         text += '};\n'
-        text += f'inline constexpr portal map_{index}_portals[]={{\n'
-        for portal_index,item in enumerate(portal_lists[index]):
-            destination,destination_spawn=transitions[index][portal_index]
-            values=(item['x'],item['y'],item['width'],item['height'],destination,destination_spawn)
-            text += '    {'+json.dumps(item['id'])+','+','.join(map(str,values))+'},\n'
+        text += f'inline constexpr cardinal_exit map_{index}_exits[]={{\n'
+        for destination,destination_side in exits[index]:
+            text += '    {'+str(destination)+','+str(destination_side)+'},\n'
         text += '};\n'
         text += f'inline constexpr player_spawn map_{index}_player_spawns[]={{\n'
         for item in player_spawn_lists[index]:
@@ -523,7 +481,10 @@ def generate():
         for name in ('nodes', 'material_nodes', 'spawn_nodes', 'decoration_nodes'):
             fields.extend((f'map_{index}_{name}', str(len(branches[name]))))
         fields.extend((f'map_{index}_spawn_profiles',str(len(spawn_profiles(recipe)))))
-        fields.extend((f'map_{index}_portals',str(len(portal_lists[index]))))
+        mask=sum((destination>=0)<<side for side,(destination,_) in enumerate(exits[index]))
+        coordinate=world_grid.validate_world(library['world'],set(map_indices),
+                    {entry['id']:{item['id']:item for item in entry['recipe']['playerSpawns']} for entry in entries})['coordinates'][entry['id']]
+        fields.extend((f'map_{index}_exits',str(mask),str(coordinate[0]),str(coordinate[1])))
         fields.extend((f'map_{index}_player_spawns',str(len(player_spawn_lists[index]))))
         fields.append(f'map_{index}_shops')
         text += '    {'+json.dumps(entry['id'])+','+json.dumps(recipe['name'].upper())+','+str(recipe['seed'])+'u,'+str(bank_indices[bank_keys[index]])+','+','.join(fields)+'},\n'
@@ -531,7 +492,7 @@ def generate():
     start=library['world']['start'];start_map=map_indices[start['map']]
     text += 'inline constexpr int start_map='+str(start_map)+';\n'
     text += 'inline constexpr int start_spawn='+str(player_spawn_indices[start_map][start['spawn']])+';\n'
-    text += 'inline constexpr int8_t next_portal[count*count]={'+','.join(str(value) for row in next_portal for value in row)+'};\n'
+    text += 'inline constexpr int8_t next_exit[count*count]={'+','.join(str(value) for row in next_exit for value in row)+'};\n'
     text += 'inline constexpr uint8_t route_distance[count*count]={'+','.join(str(value) for row in route_distance for value in row)+'};\n}\n'
     output = ROOT / 'include/generated/wasteland_recipe.h'
     output.parent.mkdir(parents=True, exist_ok=True)

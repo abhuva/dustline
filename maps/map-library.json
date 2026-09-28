@@ -2708,7 +2708,7 @@
     }
   ],
   "world": {
-    "version": 2,
+    "version": 3,
     "start": {
       "map": "wasteland",
       "spawn": "start"
@@ -2732,44 +2732,16 @@
     ],
     "connections": [
       {
-        "from": {
-          "map": "twin-cities",
-          "portal": "north"
-        },
-        "to": {
-          "map": "wasteland",
-          "spawn": "south_arrival"
-        }
+        "id": "twin-cities_east_wasteland_west",
+        "a": { "map": "twin-cities", "side": "east" },
+        "b": { "map": "wasteland", "side": "west" },
+        "requirement": null
       },
       {
-        "from": {
-          "map": "wasteland",
-          "portal": "south"
-        },
-        "to": {
-          "map": "twin-cities",
-          "spawn": "north_arrival"
-        }
-      },
-      {
-        "from": {
-          "map": "wasteland",
-          "portal": "north"
-        },
-        "to": {
-          "map": "two-rules-radial",
-          "spawn": "north_arrival"
-        }
-      },
-      {
-        "from": {
-          "map": "two-rules-radial",
-          "portal": "north"
-        },
-        "to": {
-          "map": "wasteland",
-          "spawn": "south_arrival"
-        }
+        "id": "wasteland_north_two-rules-radial_south",
+        "a": { "map": "wasteland", "side": "north" },
+        "b": { "map": "two-rules-radial", "side": "south" },
+        "requirement": null
       }
     ]
   }

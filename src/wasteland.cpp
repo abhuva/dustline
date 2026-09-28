@@ -4,6 +4,7 @@
 #include "bn_unique_ptr.h"
 #include "wasteland_tiles.h"
 #include "decoration_layout.h"
+#include "cardinal_exit.h"
 
 namespace wasteland {
 namespace {
@@ -53,10 +54,9 @@ void generate(int map_index,cave_layout::progress_fn callback) {
     if(scratch->roads.width) {
         if(!roads) roads.reset(new road_network());
         *roads=scratch->roads;
-        for(int index=0;index<recipe.portal_count;++index) {
-            const auto& portal=recipe.portals[index];
-            roads->connect_portal(*current,scratch->scratch,portal.x,portal.y);
-        }
+        for(int side=0;side<4;++side)if(recipe.exit_mask&(1<<side))
+            BN_ASSERT(cardinal_exit::apply(*current,*roads,scratch->scratch,cardinal_exit::side(side)),
+                      "Could not connect cardinal map exit");
     } else roads.reset();
     if(recipe.material_count) {
         begin_stage(recipe.material_count);

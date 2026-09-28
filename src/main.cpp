@@ -362,7 +362,7 @@ int main() {
             bn::core::update();
         }
     };
-    auto load_region=[&](int destination_map,int destination_spawn) {
+    auto load_region=[&](int destination_map,int destination_side) {
         const int saved_hp=combat_world.player_hp,saved_shield=combat_world.player_shield;
         const int saved_energy=combat_world.player_energy,saved_shield_delay=combat_world.player_shield_delay;
         const int saved_invulnerability=combat_world.player_invulnerability;
@@ -374,7 +374,7 @@ int main() {
         loading_generator=&text;loading_sprites=&loading_text;
         loading_progress=0;loading_displayed=-1;loading_update(0);
         world_map::select(destination_map,generation_loading_update);loading_update(90);
-        const auto arrival=world_map::player_spawn(destination_spawn);
+        const auto arrival=world_map::exit_arrival(destination_side);
         car=driving::Car();car.x=arrival.x;car.y=arrival.y;car.heading=arrival.heading;
         apply_battery();
         combat_world.reset(car,true,spawn_loading_update);
@@ -717,7 +717,7 @@ int main() {
                     settings_tabs[index].set_tiles(bn::sprite_items::settings_tab.tiles_item(),index*2+(index==settings_panel));
             }
             if(settings_panel==settings_map_panel) {
-                const int map_selection_count=1+cave_layout::town_count+world_map::portal_count();
+                const int map_selection_count=1+cave_layout::town_count+world_map::exit_count();
                 if(bn::keypad::left_pressed() || bn::keypad::right_pressed()) {
                     map_selection=(map_selection+map_selection_count+
                                   (bn::keypad::left_pressed()?-1:1))%map_selection_count;
@@ -726,7 +726,8 @@ int main() {
                         const auto selected_town=wasteland::layout().town(map_selection-1);
                         selected_x=selected_town.x;selected_y=selected_town.y;
                     } else if(map_selection>cave_layout::town_count) {
-                        const auto selected_portal=world_map::portal(map_selection-1-cave_layout::town_count);
+                        const int side=world_map::exit_side(map_selection-1-cave_layout::town_count);
+                        const auto selected_portal=world_map::exit(side);
                         selected_x=selected_portal.x;selected_y=selected_portal.y;
                     }
                     settings_overview->set_highlight(selected_x,selected_y);
@@ -875,9 +876,9 @@ int main() {
             if(bn::keypad::b_pressed() || (bn::keypad::a_pressed() && !gate_yes)) {
                 ignored_gate=current_gate;state=1;overlay.reset();hud_text.clear();button_guard=true;redraw=true;
             } else if(bn::keypad::a_pressed() && gate_yes) {
-                const auto transition=world_map::portal(current_gate);
+                const auto transition=world_map::exit(current_gate);
                 if(transition.destination_map>=0) {
-                    music.stop();load_region(transition.destination_map,transition.destination_spawn);redraw=true;
+                    music.stop();load_region(transition.destination_map,transition.destination_side);redraw=true;
                 }
             }
         } else if(state==4 && town && !button_guard) {
@@ -1137,7 +1138,7 @@ int main() {
                 minimap_dot.set_visible(false);
             }
             if(state==1) {
-                const int near_gate=world_map::nearby_portal(car.x.integer(),car.y.integer());
+                const int near_gate=world_map::nearby_exit(car.x.integer(),car.y.integer());
                 if(!portals_armed && near_gate<0)portals_armed=true;
                 if(ignored_gate>=0 && near_gate!=ignored_gate)ignored_gate=-1;
                 if(portals_armed && !combat_world.player_destroyed && !race_manager.active() && near_gate>=0 && near_gate!=ignored_gate) {
@@ -1200,7 +1201,7 @@ int main() {
             text.generate(-104,68,"A CONFIRM  B CANCEL",hud_text);
         }
         if(state==9 && redraw) {
-            hud_text.clear();const auto transition=world_map::portal(current_gate);
+            hud_text.clear();const auto transition=world_map::exit(current_gate);
             text.generate(-104,30,"TRAVEL TO",hud_text);
             bn::string<32> line=world_map::name(transition.destination_map);line+='?';
             text.generate(-104,42,line,hud_text);
@@ -1401,7 +1402,7 @@ int main() {
                     line=world_map::town_name(map_selection-1);
                 } else {
                     const int portal_index=map_selection-1-cave_layout::town_count;
-                    const auto portal=world_map::portal(portal_index);
+                    const auto portal=world_map::exit(world_map::exit_side(portal_index));
                     if(portal.destination_map>=0) {
                         line="ROAD TO ";line+=world_map::name(portal.destination_map);
                     } else line="UNCONNECTED ROAD";
@@ -1561,8 +1562,8 @@ int main() {
             } else if(!race_manager.session() && active_mission.state==missions::status::active) {
                 objective_x=active_mission.target_x;objective_y=active_mission.target_y;
                 if(active_mission.target_map!=world_map::index()) {
-                    const int route=world_map::route_portal(active_mission.target_map);
-                    if(route>=0) { const auto next=world_map::portal(route);objective_x=next.x;objective_y=next.y; }
+                    const int route=world_map::route_exit(active_mission.target_map);
+                    if(route>=0) { const auto next=world_map::exit(route);objective_x=next.x;objective_y=next.y; }
                     else objective_x=-1;
                 }
             }
@@ -1574,8 +1575,8 @@ int main() {
         if(radar && state==1 && !race_manager.session() && active_mission.state==missions::status::active) {
             int objective_x=active_mission.target_x,objective_y=active_mission.target_y;
             if(active_mission.target_map!=world_map::index()) {
-                const int route=world_map::route_portal(active_mission.target_map);
-                if(route>=0) { const auto next=world_map::portal(route);objective_x=next.x;objective_y=next.y; }
+                const int route=world_map::route_exit(active_mission.target_map);
+                if(route>=0) { const auto next=world_map::exit(route);objective_x=next.x;objective_y=next.y; }
             }
             int target_x=radar->project_x(objective_x);
             int target_y=radar->project_y(objective_y);
@@ -1848,23 +1849,23 @@ int main() {
         dustline_mission_telemetry[16]=telemetry_mission.origin_map;
         dustline_mission_telemetry[17]=telemetry_mission.target_map;
         dustline_portal_telemetry[0]=0x47415445;
-        dustline_portal_telemetry[1]=world_map::portal_count();
+        dustline_portal_telemetry[1]=world_map::exit_count();
         dustline_portal_telemetry[2]=current_gate;
         dustline_portal_telemetry[3]=ignored_gate;
         dustline_portal_telemetry[4]=gate_visits;
         dustline_portal_telemetry[5]=gate_yes;
         dustline_portal_telemetry[6]=state==9;
-        if(current_gate>=0 && current_gate<world_map::portal_count()) {
-            const auto telemetry_gate=world_map::portal(current_gate);
+        if(current_gate>=0 && current_gate<4 && (world_map::exit_mask()&(1<<current_gate))) {
+            const auto telemetry_gate=world_map::exit(current_gate);
             dustline_portal_telemetry[7]=telemetry_gate.destination_map;
-            dustline_portal_telemetry[8]=telemetry_gate.destination_spawn;
+            dustline_portal_telemetry[8]=telemetry_gate.destination_side;
             dustline_portal_telemetry[9]=telemetry_gate.x;
             dustline_portal_telemetry[10]=telemetry_gate.y;
         } else {
             for(int index=7;index<=10;++index)dustline_portal_telemetry[index]=-1;
         }
         dustline_portal_telemetry[11]=telemetry_mission.state==missions::status::active?
-                                      world_map::route_portal(telemetry_mission.target_map):-1;
+                                      world_map::route_exit(telemetry_mission.target_map):-1;
         const auto& telemetry_race=race_manager.current().state==races::phase::none?
                                    race_manager.offered():race_manager.current();
         dustline_race_telemetry[0]=0x52414345;
@@ -1934,7 +1935,7 @@ int main() {
         dustline_settings_telemetry[0]=0x4D454E55;
         dustline_settings_telemetry[1]=settings_panel;
         dustline_settings_telemetry[2]=map_selection;
-        dustline_settings_telemetry[3]=1+cave_layout::town_count+world_map::portal_count();
+        dustline_settings_telemetry[3]=1+cave_layout::town_count+world_map::exit_count();
         dustline_settings_telemetry[4]=map_selection==0?0:
                                        map_selection<=cave_layout::town_count?1:2;
         dustline_settings_telemetry[5]=map_selection==0?-1:
