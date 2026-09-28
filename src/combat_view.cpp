@@ -33,6 +33,8 @@ combat_view::combat_view() {
         _hp[i]->set_visible(false); _bursts[i]->set_visible(false);
         bn::core::update(); // Scene loading, never charge allocation to driving.
     }
+    set_passenger_sprites(true);
+    bn::core::update();
     for(auto& b:_bullets) {
         b=bn::sprite_items::combat_bullet.create_sprite(0,0);
         b->set_bg_priority(1); b->set_z_order(-2); b->set_visible(false);
@@ -49,6 +51,28 @@ combat_view::combat_view() {
     for(auto& pickup:_pickups)prepare(pickup,bn::sprite_items::salvage_pickup);
     prepare(_saw,bn::sprite_items::weapon_saw);
     bn::core::update();
+}
+void combat_view::set_passenger_sprites(bool enabled) {
+    if(!enabled) {
+        for(auto& sprite:_passenger_cars)sprite.reset();
+        for(auto& sprite:_passenger_bursts)sprite.reset();
+        _passenger_palette.reset();
+        return;
+    }
+    if(_passenger_cars[0])return;
+    _passenger_palette=bn::sprite_palette_ptr::create_new(bn::sprite_items::car.palette_item());
+    _passenger_palette->set_color(4,bn::color(4,10,18));
+    _passenger_palette->set_color(5,bn::color(7,18,27));
+    _passenger_palette->set_color(6,bn::color(16,27,31));
+    for(int i=0;i<passenger_traffic::passenger_count;++i) {
+        _passenger_cars[i]=bn::sprite_items::car.create_sprite(0,0);
+        _passenger_cars[i]->set_palette(*_passenger_palette);
+        _passenger_cars[i]->set_bg_priority(1);_passenger_cars[i]->set_z_order(0);
+        _passenger_cars[i]->set_visible(false);
+        _passenger_bursts[i]=bn::sprite_items::combat_burst.create_sprite(0,0);
+        _passenger_bursts[i]->set_bg_priority(1);_passenger_bursts[i]->set_z_order(-3);
+        _passenger_bursts[i]->set_visible(false);
+    }
 }
 void combat_view::update(const combat::World& world,int cx,int cy,bool visible) {
     for(int i=0;i<combat::enemy_count;++i) {
@@ -73,6 +97,29 @@ void combat_view::update(const combat::World& world,int cx,int cy,bool visible) 
                 _bursts[i]->set_position(x,y);
                 _bursts[i]->set_tiles(bn::sprite_items::combat_burst.tiles_item(),(24-e.explosion)/6);
             }
+        }
+    }
+    for(int i=0;i<passenger_traffic::passenger_count;++i) {
+        if(!_passenger_cars[i])continue;
+        const auto& passenger=world.passengers[i];
+        const int x=passenger.car.x.integer()-cx,y=passenger.car.y.integer()-cy;
+        const bool on=visible && x>-140 && x<140 && y>-90 && y<96;
+        const bool car_visible=on && passenger.hp>0 && (!passenger.flash || passenger.flash%4<2);
+        _passenger_cars[i]->set_visible(car_visible);
+        _passenger_bursts[i]->set_visible(on && passenger.explosion>0);
+        if(car_visible) {
+            const int direction=((passenger.car.heading*64/360).integer()+64)%64;
+            _passenger_cars[i]->set_position(x,y);
+            if(passenger.style==1)
+                _passenger_cars[i]->set_tiles(bn::sprite_items::car_sand_buggy.tiles_item(),direction);
+            else if(passenger.style==2)
+                _passenger_cars[i]->set_tiles(bn::sprite_items::car_truck.tiles_item(),direction);
+            else _passenger_cars[i]->set_tiles(bn::sprite_items::car.tiles_item(),direction);
+        }
+        if(on && passenger.explosion) {
+            _passenger_bursts[i]->set_position(x,y);
+            _passenger_bursts[i]->set_tiles(bn::sprite_items::combat_burst.tiles_item(),
+                                            (24-passenger.explosion)/6);
         }
     }
     for(int i=0;i<combat::bullet_count;++i) {

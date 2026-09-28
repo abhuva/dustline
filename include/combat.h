@@ -1,11 +1,14 @@
 #pragma once
 #include "bn_array.h"
+#include "bn_unique_ptr.h"
 #include "driving.h"
 #include "enemy_spawns.h"
+#include "passenger_traffic.h"
 
-// Bounded, fixed-point simulation. No sprites, audio or allocation in this layer.
+// Bounded, fixed-point simulation. No sprites, audio or per-frame allocation in this layer.
 namespace combat {
 constexpr int enemy_count=5, bullet_count=24, enemy_hp=3, player_max_hp=100,player_max_shield=20,player_max_energy=100;
+constexpr int vehicle_count=enemy_count+passenger_traffic::passenger_count;
 constexpr int spawn_range=560, despawn_range=800, spawn_cooldown=1800;
 constexpr int player_range=120, enemy_range=480, player_interval=10, enemy_interval=player_interval;
 constexpr int shield_recharge_delay=180,shield_recharge_interval=15,revive_invulnerability=120;
@@ -55,6 +58,7 @@ struct Pickup {
 class World {
 public:
     bn::array<Enemy,enemy_count> enemies;
+    bn::array<passenger_traffic::passenger,passenger_traffic::passenger_count> passengers;
     bn::array<Bullet,bullet_count> bullets;
     bn::array<Missile,missile_count> missiles;
     bn::array<Trap,trap_count> traps;
@@ -66,6 +70,7 @@ public:
     int guidance_updates=0,trap_explosions=0;
     enemy_spawns spawns;
     int spawned=0,despawned=0;
+    int passengers_spawned=0,passengers_despawned=0,passengers_killed=0;
     int player_hp=player_max_hp,player_shield=player_max_shield;
     int player_energy=player_max_energy;
     int player_shield_delay=0,player_invulnerability=0;
@@ -100,6 +105,7 @@ public:
     int max_player_hp() const { return _player_max_hp; }
     int max_player_energy() const { return _player_max_energy; }
     int living() const;
+    int passenger_living() const;
 private:
     bool _enabled=false;
     int _weapon_mask=0;
@@ -110,14 +116,25 @@ private:
     const spawn_profiles::profile* _profiles=spawn_profiles::fallback_profiles;
     int _profile_count=1;
     bn::array<int,weapon_count> _cooldowns{};
-    bn::array<int,enemy_count*(enemy_count+1)/2> _contact_cooldowns{};
+    bn::array<int,vehicle_count*(vehicle_count+1)/2> _contact_cooldowns{};
+    uint32_t _traffic_rng=1;
+    int _next_passenger_spawn=0;
+    uint16_t _passenger_serial=0;
+    uint8_t _passenger_scan=0;
+    bn::unique_ptr<passenger_traffic::routes> _passenger_routes;
     void stream(const driving::Car& player,bool initial=false);
+    void stream_passengers(const driving::Car& player);
     BN_CODE_IWRAM void think(Enemy& enemy,const driving::Car& player);
+    void think(passenger_traffic::passenger& passenger,const driving::Car& player);
+    void update_passengers(const driving::Car& player);
+    void resolve_vehicle_contacts(driving::Car& player);
+    void clear_contact_cooldowns(int actor);
     bool shoot(const driving::Car& car,bool hostile,Weapon source=Weapon::gun,int angle=0,
                int lateral=0,int range=player_range,int speed=6,int damage=1);
     void fire_weapon(const driving::Car& player,Weapon candidate);
     void update_specials(const driving::Car& player);
     void damage(Enemy& enemy,int amount,Weapon source);
+    void damage(passenger_traffic::passenger& passenger,int amount,Weapon source,bool player_attack);
     void drop_loot(Enemy& enemy);
     void update_pickups(const driving::Car& player);
     void damage_player(int amount);

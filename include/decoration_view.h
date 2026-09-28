@@ -7,7 +7,7 @@ class decoration_view {
 public:
     decoration_view();
     ~decoration_view();
-    BN_CODE_IWRAM void update(int x,int y,bool visible);
+    BN_CODE_IWRAM void update(int x,int y,bool visible,bool rebuild=true);
     static void commit();
 private:
     alignas(4) bn::regular_bg_map_cell _cells[2048]{};

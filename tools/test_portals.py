@@ -55,14 +55,16 @@ def drive_floor_route(reference,x,y):
     while cell!=start:cells.append(cell);cell=parents[cell]
     for cx,cy in reversed(cells[:-1]):
         target=(cx*128+64,cy*128+64)
-        for attempt in range(3):
-            if drive_toward(*target,limit=180):return True
+        for attempt in range(5):
+            if drive_toward(*target,limit=240):return True
             state=t.state()
             # A 128px coarse cell does not require pixel-perfect parking. At
             # sharp bends the car can already be across the shared edge while
             # its momentum makes circling back to the centre unreliable.
             if math.dist((state['x'],state['y']),target)<104:break
-            t.step(t.B,35);t.step(0,3)
+            # Ambient traffic can pin or turn the controller at a waypoint.
+            # Brake to separate, then give the same route another approach.
+            t.step(t.B,50);t.step(0,5)
         else:
             print('Portal route stalled',dict(cell=(cx,cy),target=target,state=t.state()),flush=True)
             return False
@@ -110,17 +112,17 @@ def run():
     t.tap(t.B);declined=t.portal_state();t.step(0,12)
     t.check('Declining suppresses the exit while the car remains inside it',
             t.state()['mode']==1 and declined['ignored_portal']==source_index and not t.portal_state()['prompt'],t.portal_state())
-    for _ in range(120):
+    # Move to the authored inward arrival point before returning. Driving
+    # farther through a border trigger can leave a stopped car pressed against
+    # the map edge, and ambient traffic makes that old reverse-only manoeuvre
+    # unnecessarily fragile.
+    for _ in range(5):
+        drive_toward(*origin_arrival[:2],stop_on_prompt=False,limit=360)
         if t.portal_state()['ignored_portal']==-1:break
-        t.step(t.A,1)
-    t.step(t.B,12);t.step(0,3)
-    # The car left straight through the trigger, so reversing retraces that
-    # exact safe path and avoids a wide low-speed U-turn inside the same cell.
-    for _ in range(300):
-        if t.portal_state()['prompt']:break
-        t.step(t.B)
-    if not t.portal_state()['prompt']:
-        assert drive_floor_route(reference,*source)
+        t.step(t.B,50);t.step(0,5)
+    assert t.portal_state()['ignored_portal']==-1
+    t.step(t.B,20);t.step(0,3)
+    assert drive_floor_route(reference,*source)
     rearmed=t.portal_state()['ignored_portal']==-1
     t.check('Leaving and returning immediately rearms the same exit',
             rearmed and t.portal_state()['prompt'] and t.portal_state()['current_portal']==source_index,t.portal_state())

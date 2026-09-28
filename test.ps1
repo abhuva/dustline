@@ -41,6 +41,10 @@ docker run --rm --mount $mount dustline-build:1 g++ -std=c++17 -O2 -Wall -Wextra
 if ($LASTEXITCODE -ne 0) { throw 'Could not compile race-state tests.' }
 docker run --rm --mount $mount dustline-build:1 ./build/test_race
 if ($LASTEXITCODE -ne 0) { throw 'Race route/state tests failed.' }
+docker run --rm --mount $mount dustline-build:1 g++ -std=c++17 -O2 -Wall -Wextra -Iinclude tools/test_road_routes.cpp -o build/test_road_routes
+if ($LASTEXITCODE -ne 0) { throw 'Could not compile passenger road-route tests.' }
+docker run --rm --mount $mount dustline-build:1 ./build/test_road_routes
+if ($LASTEXITCODE -ne 0) { throw 'Passenger road-route tests failed.' }
 docker run --rm --mount $mount dustline-build:1 g++ -std=c++17 -O2 -Wall -Wextra -Iinclude tools/test_save_data.cpp src/save_data.cpp -o build/test_save_data
 if ($LASTEXITCODE -ne 0) { throw 'Could not compile save-format tests.' }
 docker run --rm --mount $mount dustline-build:1 ./build/test_save_data

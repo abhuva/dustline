@@ -61,7 +61,7 @@ extern "C" {
 // Diagnostic buffers belong in EWRAM; keep the small IWRAM stack available
 // for rendering/physics calls rather than reserving it for debug snapshots.
 BN_DATA_EWRAM_BSS volatile int dustline_telemetry[66];
-BN_DATA_EWRAM_BSS volatile int dustline_combat_telemetry[240];
+BN_DATA_EWRAM_BSS volatile int dustline_combat_telemetry[311];
 BN_DATA_EWRAM_BSS volatile int dustline_weapon_telemetry[82];
 BN_DATA_EWRAM_BSS volatile int dustline_town_telemetry[10];
 BN_DATA_EWRAM_BSS volatile int dustline_mission_telemetry[18];
@@ -640,10 +640,15 @@ int main() {
                 // Race HUD text otherwise overlaps the pause allocation in the
                 // GBA's 128-entry sprite pool.
                 hud_text.clear();race_text.clear();shown_surface=-1;
+                if(combat_graphics)combat_graphics->set_passenger_sprites(false);
                 bn::core::update();
                 overlay=bn::regular_bg_items::pause_waste.create_bg(0,0);
                 overlay->set_priority(0);
-            } else overlay.reset();
+            } else {
+                overlay.reset();hud_text.clear();
+                bn::core::update();
+                if(combat_graphics)combat_graphics->set_passenger_sprites(true);
+            }
             hud->set_visible(state==1);
             car_sprite.set_visible(state==1);
             car_loadout_sprite.set_visible(state==1 && combat_world.has_weapons());
@@ -697,6 +702,11 @@ int main() {
             if(town) town->set_visible(false);
             overlay.reset();hud_text.clear();
             shown_surface=-1;
+            // The overview needs several sprite slots of its own. Combat is
+            // paused and hidden here, so release its sizeable presentation
+            // pool instead of exceeding the GBA's 128 hardware sprites.
+            if(combat_graphics)combat_graphics->set_passenger_sprites(false);
+            bn::core::update();
             settings_overview.reset(new world_overview(car.x.integer(),car.y.integer()));settings_tabs.clear();
             settings_overview->set_highlight(car.x.integer(),car.y.integer());
             for(int index=0;index<settings_panel_count;++index) {
@@ -824,8 +834,10 @@ int main() {
                 hud_text.clear();
                 apply_battery();
                 settings_overview.reset();settings_tabs.clear();settings_goal_marker.set_visible(false);
+                bn::core::update();
                 state=settings_return; button_guard=true; redraw=true;
                 if(state==1) {
+                    if(combat_graphics)combat_graphics->set_passenger_sprites(true);
                     overlay.reset(); hud->set_visible(true); car_sprite.set_visible(true);
                     car_loadout_sprite.set_visible(combat_world.has_weapons());
                     radar->set_visible(true); minimap_dot.set_visible(true);
@@ -1470,7 +1482,13 @@ int main() {
             for(auto& marker:race_radar_markers)marker.set_visible(false);
         }
         int view_start=bn::core::current_cpu_ticks();
-        if(decorations)decorations->update(camera_x.integer(),camera_y.integer(),state==1 || state==3 || state==7 || state==9);
+        // Decoration cells have a full-tile safety margin. If a costly AI
+        // slice already ran, postpone only the offscreen cell rebuild by one
+        // frame while still scrolling the layer normally. This keeps compound
+        // simulation/streaming frames inside the GBA budget.
+        const bool rebuild_decorations=state!=1 || dustline_combat_telemetry[18]<=1024;
+        if(decorations)decorations->update(camera_x.integer(),camera_y.integer(),
+            state==1 || state==3 || state==7 || state==9,rebuild_decorations);
         if(radar)radar->update_enemies(combat_world,state==1);
         mission_marker.set_visible(false);
         settings_goal_marker.set_visible(false);
@@ -1674,6 +1692,41 @@ int main() {
         dustline_combat_telemetry[237]=combat_world.player_shield;
         dustline_combat_telemetry[238]=combat_world.player_shield_delay;
         dustline_combat_telemetry[239]=combat_world.player_invulnerability;
+        for(int i=0;i<passenger_traffic::passenger_count;++i) {
+                const auto& passenger=combat_world.passengers[i];const int at=240+i*16;
+                dustline_combat_telemetry[at]=passenger.car.x.data();
+                dustline_combat_telemetry[at+1]=passenger.car.y.data();
+                dustline_combat_telemetry[at+2]=passenger.car.vx.data();
+                dustline_combat_telemetry[at+3]=passenger.car.vy.data();
+                dustline_combat_telemetry[at+4]=passenger.car.heading.data();
+                dustline_combat_telemetry[at+5]=passenger.hp;
+                dustline_combat_telemetry[at+6]=passenger.car.collisions;
+                dustline_combat_telemetry[at+7]=passenger.reverse;
+                dustline_combat_telemetry[at+8]=passenger.avoidance;
+                dustline_combat_telemetry[at+9]=passenger.recoveries;
+                dustline_combat_telemetry[at+10]=passenger.explosion;
+                dustline_combat_telemetry[at+11]=passenger.flash;
+                dustline_combat_telemetry[at+12]=passenger.current_cell;
+                dustline_combat_telemetry[at+13]=passenger.target_town;
+                dustline_combat_telemetry[at+14]=passenger.serial;
+                dustline_combat_telemetry[at+15]=passenger.moving_frames;
+        }
+        dustline_combat_telemetry[288]=combat_world.passenger_living();
+        dustline_combat_telemetry[289]=combat_world.passengers_spawned;
+        dustline_combat_telemetry[290]=combat_world.passengers_despawned;
+        dustline_combat_telemetry[291]=combat_world.passengers_killed;
+        dustline_combat_telemetry[292]=passenger_traffic::passenger_hp;
+        dustline_combat_telemetry[293]=passenger_traffic::spawn_max_range;
+        dustline_combat_telemetry[294]=passenger_traffic::retention_range;
+        dustline_combat_telemetry[295]=passenger_traffic::hard_retention_range;
+        for(int i=0;i<passenger_traffic::passenger_count;++i) {
+                const auto& passenger=combat_world.passengers[i];const int at=296+i*5;
+                dustline_combat_telemetry[at]=passenger.dwell;
+                dustline_combat_telemetry[at+1]=passenger.turnaround;
+                dustline_combat_telemetry[at+2]=passenger.contact_pause;
+                dustline_combat_telemetry[at+3]=passenger.avoid_side;
+                dustline_combat_telemetry[at+4]=passenger.blocked_frames;
+        }
         dustline_weapon_telemetry[0]=int(combat_world.weapon);
         dustline_weapon_telemetry[1]=combat_world.saw_active;
         dustline_weapon_telemetry[2]=combat_world.saw_x.data();dustline_weapon_telemetry[3]=combat_world.saw_y.data();

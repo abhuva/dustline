@@ -49,7 +49,7 @@ void decoration_view::commit() {
         view._pending=false;
     }
 }
-void decoration_view::update(int x,int y,bool visible) {
+void decoration_view::update(int x,int y,bool visible,bool rebuild) {
     if(visible) {
         int offset=_map.tiles_offset()+(_map.palette().id()<<12);
         if(offset!=_tile_offset) {
@@ -57,7 +57,7 @@ void decoration_view::update(int x,int y,bool visible) {
             _tile_offset=offset;_pending=true;_full=true;
         }
         int left=(x-120)/32,top=(y-80)/32;
-        if(left!=_left || top!=_top) {
+        if(rebuild && (left!=_left || top!=_top)) {
             for(int cy=top;cy<=top+5;++cy)for(int cx=left;cx<=left+8;++cx) {
                 int slot=(cy&7)*16+(cx&15);uint32_t key=(uint32_t(cy)<<16)|uint32_t(cx);
                 if(_positions[slot]==key)continue;

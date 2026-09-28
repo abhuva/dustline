@@ -1,5 +1,5 @@
 DUSTLINE - PROCEDURAL WASTELANDS
-Playable Game Boy Advance driving/combat prototype / version 0.16
+Playable Game Boy Advance driving/combat prototype / version 0.17
 
 PLAY
 ----
@@ -100,8 +100,8 @@ Offers derive from the selected map seed, origin outpost and contract serial, so
 the same run state produces the same offer. Contract state survives town visits,
 pausing, settings and revival. START NEW GAME clears the active in-memory run;
 returning to the title leaves the cartridge save available for CONTINUE GAME.
-There is no contract-abort option, passenger simulation or escort
-AI yet.
+There is no contract-abort option or escort AI yet. Neutral passenger traffic
+does not participate in contracts.
 
 RACES
 -----
@@ -131,6 +131,18 @@ automatically. Pause and press B for a manual abort. Only a completed race
 meeting a score tier awards session credits.
 
 BASIC COMBAT TEST
+Normal passenger traffic shares the roads with combat encounters. Up to three
+blue civilian cars are simulated near the player, choose destinations among the
+six towns, follow the right-hand side of the generated road graph, look through
+bends, and use nearby-vehicle motion to yield or take a clear shoulder. They
+stop in neutral at a destination, make a forward U-turn, then continue to
+another town. Collision impulses temporarily override their route controller,
+so the player can push them instead of fighting permanent AI throttle. They
+spawn outside the camera and remain active well beyond it, so turning
+around finds the same car; distant trips are discarded rather than simulated
+across the whole 8192px map. Passenger cars have twelve HP and can be destroyed,
+but have no health bar, weapon, enemy radar marker, combat-music role or loot.
+
 Scout buggies, armed raiders and heavy trucks spawn throughout procedural maps.
 Each reachable 512px sector gets an encounter anchor where clearance permits,
 plus two nearby starter opponents. The active exported recipe has 163 anchors; other seeds
@@ -375,6 +387,8 @@ WHAT IS IN THIS DEMO
 - Three catalog-selected 8k procedural maps with fixed seeds, connected floor,
   canyon walls, six settlement icons, live minimaps and a town/garage scene loop.
 - Five pooled enemy drivers, typed regional spawn profiles, cooldowns, loot and despawning.
+- Three pooled neutral passenger cars with town routing, bend lookahead, local
+  yielding, pushable damageable bodies and a persistent near-player simulation bubble.
 - Grouped normal weapons, a dedicated special trigger, three-hit enemies, player
   health, rechargeable shield and battery energy with authored energy-cell drops.
 - Five selectable 64-direction pixel-art bodies: roadster, sand buggy, old car,
@@ -794,7 +808,9 @@ wide-range clamps, preset reset, frozen motion, town persistence and the fixed
 Combat tests check three-hit destruction, enemy movement/firing, health, shield
 and energy, terrain impacts, bounded projectiles, menu freezing and town persistence.
 Traffic tests leave the player idle for 25 seconds, verify ongoing enemy motion,
-vehicle sensing, forward-only fire and separation, then ram using joypad input.
+smooth forward-only neutral road travel, off-screen passenger persistence,
+town turnaround, local yielding, vehicle sensing and separation, then ram,
+push and damage traffic using joypad input.
 Host tests exercise the exact rectangle/impulse math with 25 mass combinations:
 momentum, energy loss, glancing hits, separation and terrain-pinned contacts.
 The same 128-seed sweep verifies unique, reachable encounter anchors and sector
@@ -956,7 +972,7 @@ include/enemy_spawns.h     Seeded reachable encounter anchors and compact state
 tools/test_spawning.py     Cooldown, off-screen spawning and out/back streaming tests
 include/vehicle_contact.h  Shared fixed-point rectangular contact/impulse solver
 tools/test_vehicle_contact.cpp Host contact and mass-response tests
-tools/test_traffic.py      Anti-idle AI, car sensing, front guns and ram ROM tests
+tools/test_traffic.py      Road lookahead, turnaround, yielding, combat and ram ROM tests
 tools/Dockerfile           Isolated compiler and test dependencies
 
 Generated graphics/, audio/, and include/generated/ are deliberately ignored

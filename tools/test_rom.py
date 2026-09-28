@@ -93,7 +93,7 @@ def capture(name):
 checks=[]
 
 def combat_state():
-    v=[lib.emulator_read(combat_address+4*i) for i in range(240)]
+    v=[lib.emulator_read(combat_address+4*i) for i in range(311)]
     result=dict(zip(('magic','ticks','hp','player_hits','player_shots','enemy_shots','hits','kills',
                     'wall_hits','expired','living','bullets','ram','graphics','invulnerability','collisions',
                     'avoidance','recoveries'),v[:18]))
@@ -112,8 +112,20 @@ def combat_state():
     result['projectiles']=[dict(x=v[a]/4096,y=v[a+1]/4096,remaining=v[a+2],hostile=bool(v[a+3]))
                            for a in range(80,176,4) if v[a+2]]
     result.update(spawn_count=v[229],spawned=v[230],despawned=v[231],respawn_delay=v[232],
-                  spawn_address=v[233],spawn_stride=v[234],spawn_range=v[235],despawn_range=v[236],
-                  shield=v[237],shield_delay=v[238],invulnerability=v[239],invincible=bool(v[239]))
+                   spawn_address=v[233],spawn_stride=v[234],spawn_range=v[235],despawn_range=v[236],
+                   shield=v[237],shield_delay=v[238],invulnerability=v[239],invincible=bool(v[239]))
+    result['passengers']=[dict(x=v[a]/4096,y=v[a+1]/4096,vx=v[a+2]/4096,vy=v[a+3]/4096,
+                               heading=v[a+4]/4096,hp=v[a+5],collisions=v[a+6],reverse=v[a+7],
+                               avoidance=v[a+8],recoveries=v[a+9],explosion=v[a+10],flash=v[a+11],
+                               cell=v[a+12],target_town=v[a+13],serial=v[a+14],moving_frames=v[a+15])
+                          for a in range(240,288,16)]
+    for i,passenger in enumerate(result['passengers']):
+        a=296+i*5
+        passenger.update(dwell=v[a],turnaround=v[a+1],contact_pause=v[a+2],
+                         avoid_side=v[a+3],blocked_frames=v[a+4])
+    result.update(passenger_living=v[288],passengers_spawned=v[289],passengers_despawned=v[290],
+                  passengers_killed=v[291],passenger_max_hp=v[292],passenger_spawn_range=v[293],
+                  passenger_retention_range=v[294],passenger_hard_range=v[295])
     return result
 
 def weapon_state():
@@ -223,6 +235,10 @@ def combat_pixel_mask(s):
         if e['hp'] or e['explosion']:
             x=e['x']-s['camera_x']+120; y=e['y']-s['camera_y']+80
             boxes.append((x-20,y-26,x+20,y+20))
+    for passenger in c['passengers']:
+        if passenger['hp'] or passenger['explosion']:
+            x=passenger['x']-s['camera_x']+120;y=passenger['y']-s['camera_y']+80
+            boxes.append((x-16,y-16,x+16,y+16))
     for b in c['projectiles']:
         x=b['x']-s['camera_x']+120; y=b['y']-s['camera_y']+80
         boxes.append((x-12,y-12,x+12,y+12))
@@ -337,7 +353,9 @@ def load_test_profile(path,**values):
     step(0,90);start_map(0);tap(SELECT);step(0,8)
     for _ in range(3):tap(R)
     tap(A)
-    if not save_state()['valid']:raise RuntimeError('Controller-created test profile was not saved')
+    if not save_state()['valid']:
+        raise RuntimeError(f'Controller-created test profile was not saved: '
+                           f'state={state()} settings={settings_state()} save={save_state()}')
     lib.emulator_close();patch_profile(path,**values)
     assert lib.emulator_open_with_save(str(ROOT/'dist/dustline.gba').encode(),str(path).encode())
     step(0,90);tap(DOWN);tap(A)

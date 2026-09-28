@@ -38,7 +38,7 @@ def run(t):
     original=t.spawn_state(); c=t.combat_state(); ref=Reference(t,t.state()['seed'])
     t.check('Runtime spawn coordinates match the exported recipe',[(p['x'],p['y']) for p in original]==ref.spawns,dict(points=len(original)))
     t.check('World-wide profiled encounter anchors are reachable, sparse and lightweight',len(original)>=32 and
-            c['spawn_stride']==12 and c['ram']<5500 and {p['profile'] for p in original}=={0,1,2} and
+            c['spawn_stride']==12 and c['ram']<6144 and {p['profile'] for p in original}=={0,1,2} and
             all(not ref.wall(p['x']//128,p['y']//128) and ref.surface(p['x'],p['y'])!=3 for p in original),
             dict(points=len(original),profiles=sorted({p['profile'] for p in original}),ram=c['ram'],record_bytes=c['spawn_stride']))
     victim=c['enemies'][0]['spawn_id']
