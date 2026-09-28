@@ -4,6 +4,8 @@ if (-not (Test-Path 'dustline.elf')) { throw 'Run ./build.ps1 first.' }
 $mount = "type=bind,source=$PSScriptRoot,target=/work"
 docker run --rm --mount $mount dustline-build:1 python3 tools/test_map_library.py
 if ($LASTEXITCODE -ne 0) { throw 'Shared map library persistence test failed.' }
+docker run --rm --mount $mount dustline-build:1 python3 tools/test_shop_catalog.py
+if ($LASTEXITCODE -ne 0) { throw 'Shared shop catalog validation failed.' }
 docker run --rm --mount $mount dustline-build:1 python3 tools/test_wasteland_art.py
 if ($LASTEXITCODE -ne 0) { throw 'Wasteland art masks, palette or repeat checks failed.' }
 docker run --rm --mount $mount dustline-build:1 python3 tools/test_art_profiles.py

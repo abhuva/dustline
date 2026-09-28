@@ -952,7 +952,7 @@ int main() {
                     const auto& item=garage_shop::catalog[id];
                     if(shop_owned&bit) {
                         shop_notice=2;bn::sound_items::bump.play(fixed(0.2));
-                    } else if(scrap>=item.scrap && mission_manager.spend_credits(item.gold)) {
+                    } else if(scrap>=item.scrap && mission_manager.spend_credits(item.credits)) {
                         scrap-=item.scrap;shop_owned|=bit;shop_notice=1;
                         if(id==0)combat_world.set_salvage_magnet(true);
                         else if(id==1)tuning.acceleration+=fixed(0.006);
@@ -1268,15 +1268,15 @@ int main() {
                     if(town->shop_info_open()) {
                         bn::string<32> line=item.name;text.generate(-104,35,line,hud_text);
                         text.generate(-104,49,item.detail,hud_text);
-                        line=bn::to_string<5>(item.gold);line+=" GOLD + ";
+                        line=bn::to_string<5>(item.credits);line+=" GOLD + ";
                         line+=bn::to_string<3>(item.scrap);line+=" SCRAP";text.generate(-104,63,line,hud_text);
                         text.generate(-104,76,"R/B BACK",hud_text);
                     } else {
                         bn::string<32> line=item.name;text.generate(6,-29,line,hud_text);
-                        line=bn::to_string<5>(item.gold);line+=" GOLD + ";
+                        line=bn::to_string<5>(item.credits);line+=" GOLD + ";
                         line+=bn::to_string<3>(item.scrap);line+=" SCR";text.generate(6,-13,line,hud_text);
                         if(owned)line="OWNED";
-                        else if(scrap<item.scrap || mission_manager.credits()<item.gold)line="NEED RESOURCES";
+                        else if(scrap<item.scrap || mission_manager.credits()<item.credits)line="NEED RESOURCES";
                         else line="AVAILABLE";
                         text.generate(6,3,line,hud_text);
                         line="GOLD ";line+=bn::to_string<6>(mission_manager.credits());text.generate(6,20,line,hud_text);

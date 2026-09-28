@@ -233,6 +233,8 @@ def track():
     (ROOT/'artifacts/track_path.json').write_text(json.dumps(PATH),encoding='utf8')
 
 def sprites():
+    from shop_catalog import WEAPON_ICON_FRAMES, load_catalog
+    shop_items=load_catalog()['items']
     # Render each direction from a flat model; y projection gives a mild elevated view.
     sheet=img((32,32*64),sprite=True)
     buggy_sheet=img((32,32*64),sprite=True)
@@ -511,21 +513,21 @@ def sprites():
 
     # Mechanic shop grid: three permanent upgrades followed by every weapon
     # that is not part of the player's starting loadout.
-    shop_icons=img((32,32*9),sprite=True)
-    for frame in range(9):
+    shop_icons=img((32,32*len(shop_items)),sprite=True)
+    for frame,item in enumerate(shop_items):
         y=frame*32
-        if frame>=3:
-            weapon_frame=(2,7,8,3,4,6)[frame-3]
+        if item['kind']=='weapon':
+            weapon_frame=WEAPON_ICON_FRAMES[item['weapon']]
             shop_icons.paste(icons.crop((0,weapon_frame*32,32,weapon_frame*32+32)),(0,y))
             continue
         d=ImageDraw.Draw(shop_icons)
         d.rectangle((3,y+3,28,y+28),fill=2,outline=14)
         d.line((5,y+5,26,y+5),fill=8);d.line((5,y+26,26,y+26),fill=1)
-        if frame==0:       # salvage magnet
+        if item['upgrade']=='salvage_magnet':
             d.arc((6,y+7,25,y+25),0,180,fill=12,width=4)
             d.rectangle((6,y+15,10,y+24),fill=9);d.rectangle((21,y+15,25,y+24),fill=9)
             for xx,yy in ((10,9),(21,8),(16,5)):d.rectangle((xx,y+yy,xx+2,y+yy+2),fill=8)
-        elif frame==1:     # tuned injector
+        elif item['upgrade']=='tuned_injector':
             d.rectangle((8,y+10,23,y+22),fill=3,outline=1)
             d.rectangle((11,y+7,20,y+11),fill=12,outline=1)
             d.line((11,y+15,20,y+15),fill=8,width=2)
@@ -948,6 +950,8 @@ def decoration_tiles(palette):
 
 if __name__=='__main__':
     (ROOT/'artifacts').mkdir(exist_ok=True)
+    from shop_catalog import generate_header as generate_shop_catalog
+    generate_shop_catalog()
     from compile_recipe import generate as generate_recipe
     generate_recipe()
     from import_map2 import generate
