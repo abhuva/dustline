@@ -77,8 +77,11 @@ inline bool apply(cave_layout& layout,road_network& roads,cave_scratch& scratch,
     int world_x=start.x*128+64,world_y=start.y*128+64;
     if(!roads.connect_portal(layout,scratch,world_x,world_y))return false;
     roads.links[origin]|=uint8_t(1<<int(value));
-    layout.refresh_signature((uint32_t(cardinal_exit_profile::version)<<8)|(1u<<int(value)));
     return true;
+}
+
+inline void finalize(cave_layout& layout,uint8_t exit_mask) {
+    layout.refresh_signature(cardinal_exit_profile::signature^exit_mask);
 }
 
 inline rectangle trigger(side value) {

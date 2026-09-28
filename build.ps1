@@ -21,6 +21,10 @@ if ($Clean) {
 }
 docker run --rm --mount $mount dustline-build:1 python3 tools/generate_assets.py
 if ($LASTEXITCODE -ne 0) { throw 'Asset generation failed.' }
+docker run --rm --mount $mount dustline-build:1 g++ -std=c++17 -O2 -Wall -Wextra -Iinclude tools/test_active_cardinal_exits.cpp -o build/test_active_cardinal_exits
+if ($LASTEXITCODE -ne 0) { throw 'Could not compile active cardinal exit audit.' }
+docker run --rm --mount $mount dustline-build:1 ./build/test_active_cardinal_exits
+if ($LASTEXITCODE -ne 0) { throw 'An active map cannot realize its cardinal exits.' }
 docker run --rm --mount $mount dustline-build:1 make -j4
 if ($LASTEXITCODE -ne 0) { throw 'ROM compilation failed.' }
 New-Item -ItemType Directory -Force dist | Out-Null

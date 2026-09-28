@@ -59,7 +59,15 @@ uint32_t catalog_signature() {
     for(const auto& map:map_catalog::maps) {
         result=hash_text(map.id,result);
         for(int shift=0;shift<32;shift+=8) { result^=uint8_t(map.seed>>shift);result*=16777619u; }
+        result=(result^map.exit_mask)*16777619u;
+        result=(result^uint8_t(map.grid_x))*16777619u;
+        result=(result^uint8_t(map.grid_y))*16777619u;
+        for(int side=0;side<4;++side) {
+            result=(result^uint8_t(map.exits[side].destination_map))*16777619u;
+            result=(result^uint8_t(map.exits[side].destination_side))*16777619u;
+        }
     }
+    for(int shift=0;shift<32;shift+=8) { result^=uint8_t(cardinal_exit_profile::signature>>shift);result*=16777619u; }
     return result;
 }
 int exit_count() {

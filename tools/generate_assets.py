@@ -26,9 +26,14 @@ required_exit_profile = ("version", "openingCells", "approachDepthCells",
                          "triggerWidth", "triggerDepth", "arrivalInset")
 if set(exit_profile) != set(required_exit_profile) or any(type(exit_profile[key]) is not int for key in required_exit_profile):
     raise ValueError("Invalid cardinal exit profile")
+exit_profile_signature = 2166136261
+for key in required_exit_profile:
+    for byte in int(exit_profile[key]).to_bytes(4, "little"):
+        exit_profile_signature = ((exit_profile_signature ^ byte) * 16777619) & 0xffffffff
 (GEN / "cardinal_exit_profile.h").write_text(
     "#pragma once\nnamespace cardinal_exit_profile {\n" +
     "".join(f"inline constexpr int {key}={exit_profile[key]};\n" for key in required_exit_profile) +
+    f"inline constexpr unsigned signature={exit_profile_signature}u;\n" +
     "}\n")
 
 # Index zero is transparent on GBA. Every background uses this same palette.

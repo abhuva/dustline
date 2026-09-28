@@ -18,6 +18,7 @@ int main() {
             auto arrival=cardinal_exit::arrival_for(side);
             assert(zone.x>=0 && zone.y>=0 && zone.x+zone.width<=cave_layout::extent);
             assert(zone.y+zone.height<=cave_layout::extent && !layout.solid(arrival.x,arrival.y));
+            cardinal_exit::finalize(layout,uint8_t((1<<(raw+1))-1));
             signatures[raw]=layout.signature();
             assert(raw==0 || signatures[raw]!=signatures[raw-1]);
         }

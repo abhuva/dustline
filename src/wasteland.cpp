@@ -57,6 +57,7 @@ void generate(int map_index,cave_layout::progress_fn callback) {
         for(int side=0;side<4;++side)if(recipe.exit_mask&(1<<side))
             BN_ASSERT(cardinal_exit::apply(*current,*roads,scratch->scratch,cardinal_exit::side(side)),
                       "Could not connect cardinal map exit");
+        cardinal_exit::finalize(*current,recipe.exit_mask);
     } else roads.reset();
     if(recipe.material_count) {
         begin_stage(recipe.material_count);
