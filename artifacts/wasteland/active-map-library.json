@@ -5,9 +5,43 @@
       "id": "wasteland",
       "includeInGame": true,
       "recipe": {
-        "version": 6,
+        "version": 7,
         "name": "Wasteland",
         "seed": 12648431,
+        "shopProfile": {
+          "tierFloor": 1,
+          "townTierRange": [
+            2,
+            2
+          ],
+          "stockSize": 4,
+          "mixWeights": {
+            "upgrade": 2,
+            "front": 2,
+            "side": 2,
+            "top": 2
+          },
+          "townModifiers": [
+            {
+              "town": 0,
+              "stockDelta": 1,
+              "mixWeights": {
+                "upgrade": 3,
+                "front": 2,
+                "side": 2,
+                "top": 3
+              }
+            },
+            {
+              "town": 4,
+              "mixWeights": {
+                "front": 4,
+                "side": 1,
+                "top": 1
+              }
+            }
+          ]
+        },
         "artProfile": {
           "materials": [
             {
@@ -515,9 +549,36 @@
       "id": "two-rules-radial",
       "includeInGame": true,
       "recipe": {
-        "version": 6,
+        "version": 7,
         "name": "Two rules + radial mask",
         "seed": 12648430,
+        "shopProfile": {
+          "tierFloor": 1,
+          "townTierRange": [
+            2,
+            2
+          ],
+          "stockSize": 5,
+          "mixWeights": {
+            "upgrade": 1,
+            "front": 0,
+            "side": 3,
+            "top": 4
+          },
+          "townModifiers": [
+            {
+              "town": 1,
+              "mixWeights": {
+                "side": 2,
+                "top": 6
+              }
+            },
+            {
+              "town": 5,
+              "stockDelta": 1
+            }
+          ]
+        },
         "artProfile": {
           "materials": [
             {
@@ -2118,9 +2179,33 @@
       "id": "twin-cities",
       "includeInGame": true,
       "recipe": {
-        "version": 6,
+        "version": 7,
         "name": "Twin Cities",
         "seed": 12648430,
+        "shopProfile": {
+          "tierFloor": 2,
+          "townTierRange": [
+            2,
+            3
+          ],
+          "stockSize": 5,
+          "mixWeights": {
+            "upgrade": 2,
+            "front": 2,
+            "side": 2,
+            "top": 3
+          },
+          "townModifiers": [
+            {
+              "town": 4,
+              "tierOffset": 1,
+              "mixWeights": {
+                "upgrade": 5,
+                "top": 1
+              }
+            }
+          ]
+        },
         "artProfile": {
           "materials": [
             {

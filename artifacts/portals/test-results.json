@@ -1,5 +1,5 @@
 {
-  "rom_sha256": "1e44066dd031135a3609ef4a58198a86e7adca35807ffa388a1b9f5832d43ec6",
+  "rom_sha256": "ca9787243bf080435a44a9f376db036a63ac8dd846d8d3138636c87807e33222",
   "checks": [
     {
       "name": "Entering an authored Portal opens a destination confirmation",
@@ -104,7 +104,7 @@
           "town_y": 4176,
           "layout_bytes": 17784,
           "scratch_bytes": 45136,
-          "free_ewram": 176272,
+          "free_ewram": 176024,
           "floor_cells": 2290,
           "generation_updates": 431,
           "town_visits": 0,
@@ -312,7 +312,7 @@
           "town_y": 4176,
           "layout_bytes": 17784,
           "scratch_bytes": 45136,
-          "free_ewram": 176272,
+          "free_ewram": 176024,
           "floor_cells": 1460,
           "generation_updates": 401,
           "town_visits": 0,

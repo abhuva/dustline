@@ -27,7 +27,7 @@
       "kind": "upgrade",
       "upgrade": "tuned_injector",
       "family": "upgrade",
-      "tier": 1,
+      "tier": 2,
       "icon": "tuned_injector",
       "regions": { "mode": "all", "ids": [] }
     },
@@ -41,9 +41,9 @@
       "kind": "upgrade",
       "upgrade": "reinforced_plating",
       "family": "upgrade",
-      "tier": 1,
+      "tier": 3,
       "icon": "reinforced_plating",
-      "regions": { "mode": "all", "ids": [] }
+      "regions": { "mode": "only", "ids": ["twin-cities"] }
     },
     {
       "id": "twin_side_guns",
@@ -69,9 +69,9 @@
       "kind": "weapon",
       "weapon": "sniper",
       "family": "front",
-      "tier": 1,
+      "tier": 2,
       "icon": "sniper",
-      "regions": { "mode": "all", "ids": [] }
+      "regions": { "mode": "only", "ids": ["wasteland", "twin-cities"] }
     },
     {
       "id": "front_shooter",
@@ -83,7 +83,7 @@
       "kind": "weapon",
       "weapon": "front_shooter",
       "family": "side",
-      "tier": 1,
+      "tier": 2,
       "icon": "front_shooter",
       "regions": { "mode": "all", "ids": [] }
     },
@@ -97,9 +97,9 @@
       "kind": "weapon",
       "weapon": "missile",
       "family": "top",
-      "tier": 1,
+      "tier": 2,
       "icon": "missile",
-      "regions": { "mode": "all", "ids": [] }
+      "regions": { "mode": "except", "ids": ["wasteland"] }
     },
     {
       "id": "rear_trap",
@@ -111,9 +111,9 @@
       "kind": "weapon",
       "weapon": "trap",
       "family": "top",
-      "tier": 1,
+      "tier": 2,
       "icon": "trap",
-      "regions": { "mode": "all", "ids": [] }
+      "regions": { "mode": "only", "ids": ["two-rules-radial", "twin-cities"] }
     },
     {
       "id": "signal_radio",

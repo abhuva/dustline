@@ -72,6 +72,7 @@ BN_DATA_EWRAM_BSS volatile int dustline_progression_telemetry[16];
 BN_DATA_EWRAM_BSS volatile int dustline_save_telemetry[13];
 BN_DATA_EWRAM_BSS volatile int dustline_radio_telemetry[32];
 BN_DATA_EWRAM_BSS volatile int dustline_settings_telemetry[8];
+BN_DATA_EWRAM_BSS volatile int dustline_shop_telemetry[62];
 }
 
 namespace {
@@ -1811,6 +1812,22 @@ int main() {
         dustline_progression_telemetry[13]=fitting?fitting->inventory_selection():-1;
         dustline_progression_telemetry[14]=fitting&&fitting->info_open();
         dustline_progression_telemetry[15]=town&&town->shop_info_open();
+        dustline_shop_telemetry[0]=0x53484F50;
+        dustline_shop_telemetry[1]=world_map::index();
+        for(int town_index=0;town_index<6;++town_index) {
+            const int offset=2+town_index*10;
+            const auto inventory=world_map::shop_inventory(town_index);
+            int visible=0;
+            for(int slot=0;slot<9;++slot)dustline_shop_telemetry[offset+1+slot]=-1;
+            for(int slot=0;slot<inventory.count;++slot) {
+                const int save_id=inventory.save_ids[slot];
+                if(! garage_shop::owned(shop_owned,save_id)) {
+                    dustline_shop_telemetry[offset+1+visible]=save_id;
+                    ++visible;
+                }
+            }
+            dustline_shop_telemetry[offset]=visible;
+        }
         const auto& telemetry_mission=mission_manager.current();
         dustline_mission_telemetry[0]=0x4A4F4253;
         dustline_mission_telemetry[1]=int(telemetry_mission.kind);

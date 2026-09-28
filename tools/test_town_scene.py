@@ -2,6 +2,9 @@
 import json
 import test_rom as t
 
+SHOP_ITEMS={item['saveId']:item for item in
+            json.loads((t.ROOT/'data/shop-items.json').read_text())['items']}
+
 
 def run():
     t.start_map(0)
@@ -44,30 +47,61 @@ def run():
     t.check('Garage counter has solid rectangular collision',72<=counter['y']<=78,counter)
     t.check('Mechanic opens without facing the counter',menu['menu'],menu)
     t.tap(t.DOWN);t.capture('town/garage-shop');shop=t.progression_state()
-    t.check('Mechanic opens a nine-item direct-purchase shop grid',
+    t.check('Mechanic opens the town-specific direct-purchase shop grid',
             shop['menu_page']==1 and shop['shop_selection']==0 and shop['owned']==0,shop)
+    base_shops=t.shop_state()['towns']
+    t.check('The compiled region contains distinct deterministic town inventories',
+            len({tuple(stock) for stock in base_shops})>1 and
+            shop['shop_count']==len(base_shops[0]),base_shops)
     t.tap(t.R);t.capture('town/garage-shop-info');info=t.progression_state()
     t.check('R opens information for the highlighted shop item',info['shop_info_open'],info)
     t.tap(t.R)
     # Purchased stock disappears immediately; repeatedly buying the first
     # packed cell therefore consumes the complete fixed base inventory.
-    for expected in range(8,-1,-1):
+    expected_scrap=500-sum(SHOP_ITEMS[item]['scrap'] for item in base_shops[0])
+    expected_credits=5000-sum(SHOP_ITEMS[item]['credits'] for item in base_shops[0])
+    expected_owned=sum(1<<item for item in base_shops[0])
+    for expected in range(len(base_shops[0])-1,-1,-1):
         before=t.progression_state()
+        before_shops=t.shop_state()['towns']
+        purchased_id=before_shops[0][0]
         t.tap(t.A)
         after=t.progression_state()
+        after_shops=t.shop_state()['towns']
         t.check('A purchase removes one visible item without an invalid cursor',
                 before['shop_count']==expected+1 and after['shop_count']==expected and
                 after['shop_selection']<=max(0,expected-1),dict(before=before,after=after))
+        t.check('Ownership removes that stable item from every town without backfill',
+                all(after_stock==[item for item in before_stock if item!=purchased_id]
+                    for before_stock,after_stock in zip(before_shops,after_shops)),
+                dict(item=purchased_id,before=before_shops,after=after_shops))
     purchased=t.progression_state();t.capture('town/garage-shop-purchased')
-    t.check('A directly buys every upgrade and weapon using gold plus scrap',
-            purchased['owned']==0x1ff and purchased['scrap']==384 and
-            t.mission_state()['credits']==2870,purchased)
+    t.check('A directly buys the complete local stock using credits plus scrap',
+            purchased['owned']==expected_owned and purchased['scrap']==expected_scrap and
+            t.mission_state()['credits']==expected_credits,purchased)
     t.check('A fully purchased town reports sold out with no selectable cell',
             purchased['shop_count']==0 and purchased['shop_selection']==0,purchased)
     t.tap(t.B)
     t.check('B returns from the shop grid to setup',
             t.progression_state()['menu_page']==0,t.progression_state())
     t.tap(t.B)
+
+    # Reload a fully owned profile through the real save path. Global ownership
+    # must restore every town's derived stock as empty, independent of ordering.
+    t.load_test_profile(t.ROOT/'build/dustline-shop-owned-test.sav',scrap=500,
+                        credits=5000,owned=0x1ff)
+    restored=t.progression_state()
+    t.check('Save loading restores stable shop ownership for every town',
+            restored['owned']==0x1ff and all(not stock for stock in t.shop_state()['towns']),
+            dict(progression=restored,shops=t.shop_state()))
+    for _ in range(360):
+        if t.step(t.A)['mode']==3:
+            break
+    t.tap(t.UP);t.tap(t.A);t.step(0,10)
+    t.step(t.UP,180);t.tap(t.A);t.step(0,8)
+    t.check('The owned profile can re-enter its garage',
+            t.state()['mode']==4 and t.town_state()['place']==1,t.town_state())
+    t.step(t.UP,180)
 
     # The parked car is a separate physical interaction. Approach the clear
     # strip immediately to its right from the central garage aisle.

@@ -344,9 +344,6 @@ def validate_library(library, compile_maps=True):
             raise ValueError(f'Map {map_id}: {error}') from error
         try:
             shop_profile = normalize_shop_profile(recipe.get('shopProfile'))
-            if entry['includeInGame']:
-                for town in range(TOWN_COUNT):
-                    resolve_inventory(shop_catalog, map_id, recipe['seed'], town, shop_profile)
         except ValueError as error:
             raise ValueError(f'Map {map_id}: {error}') from error
         nodes = recipe.get('nodes')
@@ -359,6 +356,11 @@ def validate_library(library, compile_maps=True):
                 raise ValueError(f'Map {map_id} is enabled but has no portals')
             if not map_player_spawns:
                 raise ValueError(f'Map {map_id} is enabled but has no player spawns')
+            try:
+                for town in range(TOWN_COUNT):
+                    resolve_inventory(shop_catalog, map_id, recipe['seed'], town, shop_profile)
+            except ValueError as error:
+                raise ValueError(f'Map {map_id}: {error}') from error
             if compile_maps:
                 candidate = copy.deepcopy(recipe)
                 compile_recipe(candidate)

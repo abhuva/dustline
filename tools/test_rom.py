@@ -36,6 +36,7 @@ progression_address=int(next(line.split()[0] for line in symbols.splitlines() if
 save_address=int(next(line.split()[0] for line in symbols.splitlines() if line.endswith(' dustline_save_telemetry')),16)
 radio_address=int(next(line.split()[0] for line in symbols.splitlines() if line.endswith(' dustline_radio_telemetry')),16)
 settings_address=int(next(line.split()[0] for line in symbols.splitlines() if line.endswith(' dustline_settings_telemetry')),16)
+shop_address=int(next(line.split()[0] for line in symbols.splitlines() if line.endswith(' dustline_shop_telemetry')),16)
 lib=C.CDLL(str(ROOT/'build/emulator_bridge.so'))
 lib.emulator_open.argtypes=[C.c_char_p]
 lib.emulator_open.restype=C.c_int
@@ -179,6 +180,14 @@ def progression_state():
                 shop_selection=v[8],active_pickups=v[9],collected_energy=v[10],
                 loadout_slot=v[11],inventory_open=bool(v[12]),inventory_selection=v[13],
                 info_open=bool(v[14]),shop_info_open=bool(v[15]))
+
+def shop_state():
+    v=[lib.emulator_read(shop_address+4*i) for i in range(62)]
+    towns=[]
+    for town in range(6):
+        offset=2+town*10
+        towns.append(v[offset+1:offset+1+v[offset]])
+    return dict(magic=v[0],map=v[1],towns=towns)
 
 def save_state():
     v=[lib.emulator_read(save_address+4*i) for i in range(13)]

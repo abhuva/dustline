@@ -1,5 +1,5 @@
 {
-  "rom_sha256": "1e44066dd031135a3609ef4a58198a86e7adca35807ffa388a1b9f5832d43ec6",
+  "rom_sha256": "ca9787243bf080435a44a9f376db036a63ac8dd846d8d3138636c87807e33222",
   "emulator": "libmGBA (Debian bookworm)",
   "checks": [
     {
@@ -155,7 +155,7 @@
         "avoidance": 1007,
         "recoveries": 3,
         "simulation_cpu": 0.2822966507177033,
-        "view_cpu": 0.12098427887901572,
+        "view_cpu": 0.12075643654591023,
         "bumps": 5,
         "last_bump": 0.211669921875,
         "player_mass": 1100,
@@ -296,7 +296,7 @@
         "spawned": 5,
         "despawned": 0,
         "respawn_delay": 1800,
-        "spawn_address": 33593396,
+        "spawn_address": 33593644,
         "spawn_stride": 12,
         "spawn_range": 560,
         "despawn_range": 800,
@@ -333,7 +333,7 @@
         "avoidance": 1007,
         "recoveries": 3,
         "simulation_cpu": 0.2822966507177033,
-        "view_cpu": 0.12098427887901572,
+        "view_cpu": 0.12075643654591023,
         "bumps": 5,
         "last_bump": 0.211669921875,
         "player_mass": 1100,
@@ -474,7 +474,7 @@
         "spawned": 5,
         "despawned": 0,
         "respawn_delay": 1800,
-        "spawn_address": 33593396,
+        "spawn_address": 33593644,
         "spawn_stride": 12,
         "spawn_range": 560,
         "despawn_range": 800,
@@ -506,7 +506,7 @@
         "avoidance": 1007,
         "recoveries": 3,
         "simulation_cpu": 0.2822966507177033,
-        "view_cpu": 0.12098427887901572,
+        "view_cpu": 0.12075643654591023,
         "bumps": 5,
         "last_bump": 0.211669921875,
         "player_mass": 1100,
@@ -647,7 +647,7 @@
         "spawned": 5,
         "despawned": 0,
         "respawn_delay": 1800,
-        "spawn_address": 33593396,
+        "spawn_address": 33593644,
         "spawn_stride": 12,
         "spawn_range": 560,
         "despawn_range": 800,
@@ -677,7 +677,7 @@
           "laps": 0,
           "gate": 0,
           "collisions": 0,
-          "cpu": 0.48193359375,
+          "cpu": 0.495361328125,
           "missed": 1,
           "camera_x": 4254,
           "camera_y": 4169,
@@ -705,7 +705,7 @@
           "town_y": 4176,
           "layout_bytes": 17784,
           "scratch_bytes": 45136,
-          "free_ewram": 176272,
+          "free_ewram": 176024,
           "floor_cells": 1460,
           "generation_updates": 401,
           "town_visits": 0,
@@ -748,7 +748,7 @@
           "avoidance": 7,
           "recoveries": 1,
           "simulation_cpu": 0.23103212576896787,
-          "view_cpu": 0.061973114604693555,
+          "view_cpu": 0.06174527227158806,
           "bumps": 1,
           "last_bump": 2.00048828125,
           "player_mass": 1100,
@@ -876,7 +876,7 @@
           "spawned": 5,
           "despawned": 0,
           "respawn_delay": 1800,
-          "spawn_address": 33593396,
+          "spawn_address": 33593644,
           "spawn_stride": 12,
           "spawn_range": 560,
           "despawn_range": 800,
@@ -895,7 +895,7 @@
       "name": "Traffic AI and contact solving stay within the measured frame budget",
       "passed": true,
       "details": {
-        "cpu": 0.784912109375,
+        "cpu": 0.798583984375,
         "missed": 0
       }
     },
@@ -1146,7 +1146,7 @@
       "name": "Spawn streaming fits measured frame budget",
       "passed": true,
       "details": {
-        "cpu": 0.878173828125,
+        "cpu": 0.8916015625,
         "missed": 0
       }
     },
@@ -1189,7 +1189,7 @@
       "name": "Damaged-survivor streaming route stays within frame budget",
       "passed": true,
       "details": {
-        "cpu": 0.804443359375,
+        "cpu": 0.81787109375,
         "missed": 0
       }
     },
@@ -2067,7 +2067,7 @@
           "collisions": 0,
           "avoidance": 0,
           "recoveries": 0,
-          "simulation_cpu": 0.19845067213488266,
+          "simulation_cpu": 0.19822282980177716,
           "view_cpu": 0.07496012759170653,
           "bumps": 0,
           "last_bump": 0.0,
@@ -2215,7 +2215,7 @@
           "spawned": 6,
           "despawned": 0,
           "respawn_delay": 1800,
-          "spawn_address": 33593396,
+          "spawn_address": 33593644,
           "spawn_stride": 12,
           "spawn_range": 560,
           "despawn_range": 800,
@@ -2473,7 +2473,7 @@
           "scrap": 0,
           "owned": 0,
           "shop_notice": 0,
-          "duplicates": 0,
+          "shop_count": -1,
           "collected_scrap": 0,
           "collected_blueprints": 0,
           "menu_page": -1,
@@ -2531,7 +2531,7 @@
           "town_y": 4176,
           "layout_bytes": 17784,
           "scratch_bytes": 45136,
-          "free_ewram": 176272,
+          "free_ewram": 176024,
           "floor_cells": 1460,
           "generation_updates": 401,
           "town_visits": 0,
@@ -2560,7 +2560,7 @@
       "name": "Grouped weapon fire fits the measured driving frame budget",
       "passed": true,
       "details": {
-        "cpu": 0.77978515625,
+        "cpu": 0.79296875,
         "missed": 10,
         "ram": 5304
       }

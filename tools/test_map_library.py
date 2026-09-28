@@ -85,7 +85,10 @@ with tempfile.TemporaryDirectory() as folder:
         preview = json.loads(urlopen(Request(f'http://127.0.0.1:{server.server_port}/api/shop-preview',
                                              data=preview_body, method='POST',
                                              headers={'Content-Type': 'application/json'})).read())
-        assert len(preview['towns']) == 6 and all(len(town['items']) == 9 for town in preview['towns'])
+        assert [[item['saveId'] for item in town['items']] for town in preview['towns']] == [
+            [0, 8, 4, 5, 1], [4, 5, 8, 1], [1, 5, 8, 4],
+            [3, 1, 8, 4], [4, 0, 8, 5], [8, 3, 4, 0],
+        ]
         assert preview['towns'][0]['name'] == 'SUNDER'
         updated = copy.deepcopy(envelope['library'])
         updated['maps'].append(draft)

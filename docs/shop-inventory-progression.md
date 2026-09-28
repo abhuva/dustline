@@ -1,7 +1,7 @@
 # Shop inventory and regional progression
 
-**Status:** Proposed implementation design  
-**Last updated:** 2026-09-28  
+**Status:** Implemented
+**Last updated:** 2026-09-28
 **Related decision:** [ADR-004](adr/ADR-004-deterministic-regional-shop-inventories.md)
 
 ## Player-facing goal
@@ -57,12 +57,11 @@ An optional adjustment for one stable town index within a map.
 **Base inventory**  
 The fixed ordered item IDs compiled for a town before owned items are removed.
 
-## Proposed source data
+## Source data
 
-The item catalog should move from a C++-only list to shared source data so the
+The item catalog lives in shared source data so the
 map compiler, editor, host tests, and ROM generator validate the same rules. The
-exact path can be chosen during implementation; `data/shop-items.json` is the
-recommended source.
+canonical path is `data/shop-items.json`.
 
 An item record should contain data equivalent to:
 
@@ -72,7 +71,7 @@ An item record should contain data equivalent to:
   "saveId": 4,
   "name": "LONG SNIPER",
   "detail": "SLOW / RANGE 520",
-  "gold": 320,
+  "credits": 320,
   "scrap": 18,
   "kind": "weapon",
   "weapon": "sniper",
@@ -96,11 +95,11 @@ and incompatible weapon/family combinations are build errors. Save IDs are
 append-only and must never be reused, even after an item is retired. Existing
 items reserve their current ownership positions 0 through 8.
 
-## Proposed map recipe profile
+## Map recipe profile
 
 Shop configuration belongs to map recipe metadata alongside art and encounter
 profiles. It should not be a graph node because it does not transform terrain.
-A future recipe version should accept data equivalent to:
+Recipe version 7 accepts data equivalent to:
 
 ```json
 {
@@ -142,13 +141,12 @@ Recommended semantics:
 - Zero weight prevents the generator from deliberately choosing that family,
   although the fallback rules below may still be configured to fill shortages.
 
-The schema names are provisional, but these semantics should remain stable.
-The Map Workshop should eventually expose a Shop Profile panel with a preview
-table for all six towns.
+These schema names and semantics are implemented. The Map Workshop exposes a
+Shop Profile dialog with an exact preview table for all six towns.
 
 ## Deterministic stock resolution
 
-The build should resolve inventories in this order:
+The build resolves inventories in this order:
 
 1. Start with all catalog items.
 2. Apply each item's region policy to the current map ID.
@@ -174,8 +172,7 @@ host tests snapshot every town's stock.
 
 ## Runtime and UI behavior
 
-The current town shop assumes nine fixed icons whose grid position is also the
-global catalog index. The implementation must separate these concepts:
+The town shop separates these concepts:
 
 - `base_stock[]` contains catalog/save IDs for the current map and town.
 - `visible_stock[]` is rebuilt by preserving base order and excluding owned IDs.
@@ -198,9 +195,9 @@ must not inherit a nine-item limit from the current UI.
 Ownership remains global across all maps and towns. Shops do not persist stock,
 discovery time, or visit state.
 
-The current prototype stores shop ownership as a small mask in legacy extension
-fields. The expanded catalog should use immutable save IDs and a generated
-ownership bitset sized from the highest reserved save ID. Save-format work must:
+The prototype now stores immutable save IDs in a generated ownership bitset sized
+for the reserved ID range. Save format version 2 carries four ownership words,
+while its version-1 migration preserves the legacy nine bits. The format:
 
 - migrate the existing nine ownership bits without changing their meaning;
 - preserve old valid saves;
@@ -208,13 +205,9 @@ ownership bitset sized from the highest reserved save ID. Save-format work must:
 - reserve removed IDs instead of reusing them;
 - remain bounded by the cartridge payload budget, not by the 3×3 UI.
 
-If the initial implementation keeps the existing mask temporarily, the compiler
-must reject an item whose save ID cannot be represented and clearly identify
-that as transitional save-format work, not a hardware limit.
-
 ## Map Workshop and validation
 
-The Shop Profile editor should show:
+The Shop Profile editor shows:
 
 - regional tier floor and town tier-cap range;
 - base stock size;
@@ -242,12 +235,12 @@ The first content pass should be conservative:
 - Keep the radio obtainable early enough that it can support exploration.
 - Treat price as the reason to return later; do not add hidden level checks.
 
-Exact item tiers, region policies, weights, and prices are balancing data and
-should be chosen during the implementation/content pass with generated previews.
+The initial item tiers, region policies, weights, and prices are committed as
+balancing data and remain reviewable through generated previews.
 
 ## Acceptance tests for implementation
 
-Host-side tests should verify:
+Host-side tests verify:
 
 - all item IDs and save IDs are unique and region references exist;
 - the same inputs produce byte-identical town inventories;
@@ -258,7 +251,7 @@ Host-side tests should verify:
 - the generated inventory snapshot changes only when relevant content or the
   explicit shop-generation version changes.
 
-Headless mGBA tests should verify:
+Headless mGBA tests verify:
 
 - two towns can expose different base inventories;
 - revisiting, saving/loading, and changing player statistics preserve stock;
@@ -268,16 +261,13 @@ Headless mGBA tests should verify:
 - a fully purchased shop displays `SOLD OUT` and remains safely escapable;
 - old saves retain all previously purchased equipment.
 
-## Suggested next-session implementation order
+## Implementation record
 
-1. Introduce the shared item catalog with stable IDs, families, tiers, policies,
-   and compatibility validation while preserving current content behavior.
-2. Add recipe schema/compiler support for regional profiles and town modifiers.
-3. Generate and snapshot exact per-town base inventories.
-4. Refactor the town scene from fixed catalog indexes to dynamic visible stock.
-5. Filter global ownership without backfill and implement `SOLD OUT`.
-6. Update save ownership encoding with backward-compatibility tests.
-7. Add the Map Workshop profile editor and exact town previews.
-8. Assign initial tiers/regions/mixes, build the ROM, and emulator-test travel,
-   purchase, revisit, and save/load behavior.
+The feature landed as six vertical commits:
 
+1. Shared catalog, stable IDs, validation, and generated C++ data.
+2. Stable-ID ownership bitsets plus version-2 saves and version-1 migration.
+3. Recipe-version-7 profiles and deterministic per-town compiled inventories.
+4. Packed runtime inventory filtering, global removal, and `SOLD OUT` handling.
+5. Map Workshop authoring and exact six-town previews through the canonical resolver.
+6. Regional balancing, host snapshots, headless-ROM acceptance coverage, and docs.

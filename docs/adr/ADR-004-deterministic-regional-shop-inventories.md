@@ -1,12 +1,12 @@
 # ADR-004: Use deterministic regional inventories for town shops
 
-**Status:** Proposed | **Date:** 2026-09-28  
+**Status:** Accepted | **Date:** 2026-09-28
 **Participants:** Marc Bielert, Codex
 
 ## Context
 
-The garage shop currently exposes the same complete nine-item catalog in every
-town. This makes purchases easy to understand, but removes a reason to visit
+The garage shop previously exposed the same complete nine-item catalog in every
+town. That made purchases easy to understand, but removed a reason to visit
 different towns and regions. As the item catalog grows, displaying everything
 everywhere will also make the shop crowded and prevent geography from guiding
 progression.
@@ -24,7 +24,7 @@ town's known inventory minus already-owned items.
 
 ## Decision
 
-We propose a layered, deterministic shop system with three authoring levels:
+We use a layered, deterministic shop system with three authoring levels:
 
 1. Each item has a stable ID, an immutable save ID, a positive tier, an item
    family (`upgrade`, `front`, `side`, or `top`), and a region policy. Region
@@ -114,4 +114,3 @@ is easier to validate and guarantees identical stock for a given ROM.
 
 - [Shop inventory and regional progression design](../shop-inventory-progression.md)
 - [Dustline world activities](../world-activities.md)
-

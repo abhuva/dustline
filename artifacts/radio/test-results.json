@@ -1,5 +1,5 @@
 {
-  "rom_sha256": "1e44066dd031135a3609ef4a58198a86e7adca35807ffa388a1b9f5832d43ec6",
+  "rom_sha256": "ca9787243bf080435a44a9f376db036a63ac8dd846d8d3138636c87807e33222",
   "checks": [
     {
       "name": "Signal overlay is absent before an owned receiver is fitted",
@@ -341,7 +341,7 @@
           "laps": 0,
           "gate": 0,
           "collisions": 13,
-          "cpu": 0.666748046875,
+          "cpu": 0.679931640625,
           "missed": 1,
           "camera_x": 4493,
           "camera_y": 5891,
@@ -369,7 +369,7 @@
           "town_y": 4176,
           "layout_bytes": 17784,
           "scratch_bytes": 45136,
-          "free_ewram": 176272,
+          "free_ewram": 176024,
           "floor_cells": 1460,
           "generation_updates": 401,
           "town_visits": 1,
@@ -539,7 +539,7 @@
           "town_y": 4176,
           "layout_bytes": 17784,
           "scratch_bytes": 45136,
-          "free_ewram": 176272,
+          "free_ewram": 176024,
           "floor_cells": 1460,
           "generation_updates": 401,
           "town_visits": 0,

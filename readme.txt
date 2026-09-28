@@ -40,10 +40,12 @@ Yes unloads the overworld graphics and opens a walkable, lively wasteland town.
 Follow the central street to the signed GARAGE at the north edge. Enter its
 approach area and press A when the circled A prompt appears. Inside, enter the
 rectangular area along the mechanic counter and press A when its prompt appears
-to fit a vehicle setup or open the parts shop. The shop is a 3 x 3 icon grid:
+to fit a vehicle setup or open the parts shop. The shop packs its fixed,
+town-specific stock into a grid of up to 3 x 3 icons:
 use the D-pad to select an item, A to buy it for gold plus scrap, R for details,
-and B to return to setup. Bought upgrades activate immediately and bought weapons
-become available at the parked car. The parked car on the left is
+and B to return to setup. Bought items disappear from every town that stocked
+them without being replaced; an empty shop clearly reports SOLD OUT. Bought
+upgrades activate immediately and bought weapons become available at the parked car. The parked car on the left is
 solid; stand in the marked area immediately to its right and press A to enter the
 separate WEAPON FITTING screen. Its larger vehicle preview shows the fitted
 attachments. Left/Right chooses FRONT, SIDE or TOP, A opens that mount's
@@ -292,7 +294,7 @@ Left / Right    Steer relative to the car (steering reverses while backing up)
 Town D-pad      Walk in four directions
 Town A          Use any circled-A proximity area; facing does not matter
 Garage Up/Down Switch mechanic setup/shop pages
-Shop D-pad      Select one of nine upgrades or weapons
+Shop D-pad      Select an available town-stocked upgrade or weapon
 Shop A / B      Buy highlighted item / return to setup
 Shop R          Show highlighted item details
 Fitting Left/Right Choose the FRONT, SIDE or TOP mount
@@ -315,10 +317,14 @@ Reverse uses B, after the car has stopped.
 
 PROGRESSION
 -----------
-Each town Garage sells nine items directly for session gold plus scrap: SALVAGE
-MAGNET, TUNED INJECTOR, REINFORCED PLATING, TWIN SIDE GUNS, LONG SNIPER, FRONT
-SHOOTER, SEEKER MISSILE, REAR TRAP and SIGNAL RADIO. A purchase unlocks the item
-immediately; there are no blueprints or 3D-printing step. Ownership, resources,
+Town Garages sell deterministic regional selections from SALVAGE MAGNET, TUNED
+INJECTOR, REINFORCED PLATING, TWIN SIDE GUNS, LONG SNIPER, FRONT SHOOTER, SEEKER
+MISSILE, REAR TRAP and SIGNAL RADIO. Wasteland towns emphasize early essentials,
+Two Rules adds missile and trap choices, and Twin Cities carries the later-tier
+selection. Individual towns within a region can stock different subsets, but
+their base inventories never rotate or scale with the player. A purchase unlocks
+the item immediately and removes it globally; there are no blueprints or
+3D-printing step. Ownership uses stable save IDs, and ownership, resources,
 fitted gear and installed upgrades are included in normal saves. Starting a new
 game clears purchases and returns to the standard front gun.
 Authored enemy populations can also drop energy cells, letting a successful fight
@@ -457,6 +463,12 @@ Rebuild without -NoBuild after changing C++ generator code. -BuildOnly builds
 the engine without starting the server; -Port 9000 chooses a different loopback
 port. Maps saved with Include in game enabled are compiled into the ROM by the
 next build.ps1 run.
+
+The map toolbar's Shops dialog edits the recipe's tier floor, town tier range,
+base stock size, family weights and per-town modifiers. Preview inventories are
+resolved by the same Python catalog code used by the ROM build, so all six named
+town rows show the exact ordered stock that will be compiled. Invalid or
+undersized eligible pools are reported before saving or building.
 
 MUSIC WORKSHOP
 ~~~~~~~~~~~~~~

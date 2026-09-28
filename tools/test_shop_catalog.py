@@ -3,7 +3,7 @@ import copy
 import json
 
 from compile_recipe import ROOT
-from shop_catalog import DEFAULT_PROFILE, TOWN_COUNT, load_catalog, normalize_profile, resolve_inventory, validate_catalog
+from shop_catalog import TOWN_COUNT, load_catalog, normalize_profile, resolve_inventory, validate_catalog
 
 
 library = json.loads((ROOT / 'maps/map-library.json').read_text())
@@ -12,14 +12,17 @@ catalog = load_catalog(map_ids=map_ids)
 assert len(catalog['items']) == 9
 assert [item['saveId'] for item in catalog['items']] == list(range(9))
 
-first = resolve_inventory(catalog, 'wasteland', 12648431, 0, DEFAULT_PROFILE)
-second = resolve_inventory(copy.deepcopy(catalog), 'wasteland', 12648431, 0, copy.deepcopy(DEFAULT_PROFILE))
-assert first == second and len(first['saveIds']) == 9 and len(set(first['saveIds'])) == 9
-assert set(first['saveIds']) == set(range(9))
+wasteland = next(entry for entry in library['maps'] if entry['id'] == 'wasteland')['recipe']
+baseline_profile = wasteland['shopProfile']
+first = resolve_inventory(catalog, 'wasteland', wasteland['seed'], 0, baseline_profile)
+second = resolve_inventory(copy.deepcopy(catalog), 'wasteland', wasteland['seed'], 0,
+                           copy.deepcopy(baseline_profile))
+assert first == second and len(first['saveIds']) == 5 and len(set(first['saveIds'])) == 5
+assert all(catalog['items'][save_id]['tier'] <= first['tierCap'] for save_id in first['saveIds'])
 
 reordered = copy.deepcopy(catalog)
 reordered['items'].reverse()
-assert resolve_inventory(reordered, 'wasteland', 12648431, 0, DEFAULT_PROFILE) == first
+assert resolve_inventory(reordered, 'wasteland', wasteland['seed'], 0, baseline_profile) == first
 
 regional = copy.deepcopy(catalog)
 regional['items'][0]['regions'] = {'mode': 'only', 'ids': ['wasteland']}
@@ -62,5 +65,5 @@ for entry in library['maps']:
     assert [resolve_inventory(catalog, entry['id'], changed['seed'], town,
                               changed.get('shopProfile'))['saveIds'] for town in range(TOWN_COUNT)] == snapshot[entry['id']]
 encoded = json.dumps(snapshot, sort_keys=True, separators=(',', ':')).encode()
-assert __import__('hashlib').sha256(encoded).hexdigest() == 'b151c77557501d0fc0da99c27a03f07f085f5b79dcc81fb6ce10d45e30595242'
+assert __import__('hashlib').sha256(encoded).hexdigest() == '2af3d42bc1bc053617ba140f0cb09e4192aebc0cc5eedc37b7810659be2aef18'
 print('PASS shared shop catalog validation, immutable save IDs and deterministic resolution.')
