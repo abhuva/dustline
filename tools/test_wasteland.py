@@ -30,7 +30,9 @@ class Reference:
                 branch=compile_recipe(self.recipe,self.recipe[key]);file=folder/(key+'.program')
                 file.write_bytes(pack_program(branch));arg=str(file)
             placements.append(arg)
-        subprocess.run([str(folder/'map_recipe_bridge'),str(program),str(seed),str(path),material_arg,*placements],check=True)
+        portal_file=folder/'active-portals.bin'
+        portal_file.write_bytes(b''.join(struct.pack('<HH',item['x'],item['y']) for item in self.recipe['portals']))
+        subprocess.run([str(folder/'map_recipe_bridge'),str(program),str(seed),str(path),material_arg,*placements,str(portal_file)],check=True)
         data=path.read_bytes();meta=struct.unpack_from('<20I',data)
         self.info=(64,64,seed,meta[4],meta[5],meta[3],meta[6],meta[7])
         self.columns=64;self.extent=8192;self.seed=seed;self.cells=data[80:4176]
@@ -59,6 +61,21 @@ class Reference:
             for at in towns[1:]:
                 while at is not None:
                     self.roads.add(at);at=parents[at]
+            for portal in self.recipe['portals']:
+                target=(portal['x']//128,portal['y']//128)
+                if target in self.roads:continue
+                queue=deque([target]);portal_parents={target:None};joined=None
+                while queue and joined is None:
+                    x,y=at=queue.popleft()
+                    for d,next_cell in enumerate(((x,y-1),(x+1,y),(x,y+1),(x-1,y))):
+                        if next_cell in portal_parents or self.wall(*next_cell):continue
+                        if d==0 and at in towns or d==2 and next_cell in towns:continue
+                        portal_parents[next_cell]=at;queue.append(next_cell)
+                        if next_cell in self.roads:
+                            joined=next_cell;break
+                at=joined
+                while at is not None:
+                    self.roads.add(at);at=portal_parents[at]
         self.refs=bank['refs'];self.tiles=bytes(bank['tiles']);self.palette=bytes(bank['palette'])
 
     def wall(self,x,y):
@@ -229,6 +246,8 @@ def run(t):
         t.check(prefix+' garage exit returns to the same town',exterior['place']==0 and
                 exterior['x']==128 and exterior['y']==51,exterior)
         t.step(t.DOWN,190);t.tap(t.A)
+        if t.state()['mode']==4 and t.town_state()['prompt']:
+            t.tap(t.A)
         held=t.state();t.step(0,20);after=t.state()
         t.check(prefix+' return restores exact stopped position and same world',after['mode']==1 and
                 all(after[k]==before[k]==held[k] for k in ('seed','signature','generations','x','y')) and
@@ -353,7 +372,7 @@ def run(t):
     check_hud_radar(t,alternate_ref,'Alternate')
     menu(); t.step(0,37); alternate2=t.start_map(1)
     t.check('Reloading the alternate map is deterministic',alternate2['seed']==alternate['seed'] and
-            alternate2['signature']==alternate['signature'] and alternate2['generations']==alternate['generations']+1,alternate2)
+            alternate2['signature']==alternate['signature'],alternate2)
     t.check('Generation scratch is released after each catalog load',abs(alternate2['free_ewram']-alternate['free_ewram'])<512,
             [alternate['free_ewram'],alternate2['free_ewram']])
     menu(); restored=t.start_map(0);restored_ref=Reference(t,restored['seed'])

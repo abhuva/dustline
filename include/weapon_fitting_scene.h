@@ -9,7 +9,7 @@ class weapon_fitting_scene {
 public:
     enum class event { none, redraw, fitted, close };
 
-    weapon_fitting_scene(combat::World& world,int car_type);
+    weapon_fitting_scene(combat::World& world,int car_type,uint16_t owned_weapons);
     event update(combat::World& world);
 
     int slot() const { return _slot; }
@@ -39,6 +39,7 @@ private:
     bn::vector<bn::sprite_ptr,combat::mount_slot_count> _slot_icons;
     bn::vector<bn::sprite_ptr,9> _inventory_icons;
     int _car_type;
+    uint16_t _owned_weapons;
     int _slot=0;
     int _inventory_selection=0;
     bool _inventory_open=false;

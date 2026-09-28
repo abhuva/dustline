@@ -9,7 +9,7 @@ assert t.lib.emulator_open(str(t.ROOT/'dist/dustline.gba').encode())
 captures=[]
 try:
     t.step(0,90)
-    for index in (0,1,2,3,6):
+    for index in range(t.MAP_COUNT):
         state=t.start_map(index);t.step(0,20)
         image=t.capture(f'art-banks/map-{index}')
         captures.append(dict(index=index,map=t.GAME_MAPS[index]['id'],seed=state['seed'],
@@ -21,4 +21,4 @@ try:
 finally:
     t.lib.emulator_close()
 (output/'results.json').write_text(json.dumps(captures,indent=2)+'\n')
-print('PASS ROM selects five distinct map art banks, including Twin Cities, and survives repeated scene teardown.')
+print(f'PASS ROM selects {len(captures)} distinct enabled-map art banks and survives repeated scene teardown.')

@@ -13,21 +13,21 @@ constexpr int inventory_x[3]={33,66,99};
 constexpr int inventory_y[3]={-28,4,36};
 
 int icon_frame(combat::Weapon weapon) {
-    return weapon==combat::Weapon::count?5:int(weapon);
+    return int(weapon);
 }
 }
 
-weapon_fitting_scene::weapon_fitting_scene(combat::World& world,int car_type) :
+weapon_fitting_scene::weapon_fitting_scene(combat::World& world,int car_type,uint16_t owned_weapons) :
     _car_left(bn::sprite_items::garage_car_preview.create_sprite(-82,-20,car_type*2)),
     _car_right(bn::sprite_items::garage_car_preview.create_sprite(-18,-20,car_type*2+1)),
-    _front_left(bn::sprite_items::garage_car_attachments.create_sprite(-82,-20,car_type*8)),
-    _front_right(bn::sprite_items::garage_car_attachments.create_sprite(-18,-20,car_type*8+1)),
-    _side_left(bn::sprite_items::garage_car_attachments.create_sprite(-82,-20,car_type*8+2)),
-    _side_right(bn::sprite_items::garage_car_attachments.create_sprite(-18,-20,car_type*8+3)),
-    _special_left(bn::sprite_items::garage_car_attachments.create_sprite(-82,-20,car_type*8+4)),
-    _special_right(bn::sprite_items::garage_car_attachments.create_sprite(-18,-20,car_type*8+5)),
+    _front_left(bn::sprite_items::garage_car_attachments.create_sprite(-82,-20,car_type*14)),
+    _front_right(bn::sprite_items::garage_car_attachments.create_sprite(-18,-20,car_type*14+1)),
+    _side_left(bn::sprite_items::garage_car_attachments.create_sprite(-82,-20,car_type*14+2)),
+    _side_right(bn::sprite_items::garage_car_attachments.create_sprite(-18,-20,car_type*14+3)),
+    _special_left(bn::sprite_items::garage_car_attachments.create_sprite(-82,-20,car_type*14+4)),
+    _special_right(bn::sprite_items::garage_car_attachments.create_sprite(-18,-20,car_type*14+5)),
     _cursor(bn::sprite_items::fitting_cursor.create_sprite(slot_x[0],49)),
-    _car_type(car_type) {
+    _car_type(car_type),_owned_weapons(owned_weapons) {
     _set_info(false);
     _car_left.set_bg_priority(0);_car_left.set_z_order(-3);
     _car_right.set_bg_priority(0);_car_right.set_z_order(-3);
@@ -48,14 +48,24 @@ weapon_fitting_scene::weapon_fitting_scene(combat::World& world,int car_type) :
 }
 
 int weapon_fitting_scene::_choice_count() const {
-    return _slot==int(combat::MountSlot::special)?3:2;
+    int result=1;
+    const combat::Weapon candidates[3][3]={{combat::Weapon::gun,combat::Weapon::sniper,combat::Weapon::empty},
+        {combat::Weapon::sides,combat::Weapon::front_shooter,combat::Weapon::empty},
+        {combat::Weapon::missile,combat::Weapon::trap,combat::Weapon::radio}};
+    const int available=_slot==int(combat::MountSlot::special)?3:2;
+    for(int index=0;index<available;++index)result+=(_owned_weapons&(1u<<int(candidates[_slot][index])))!=0;
+    return result;
 }
 
 combat::Weapon weapon_fitting_scene::_choice_weapon(int choice) const {
-    if(!choice)return combat::Weapon::count;
-    if(_slot==int(combat::MountSlot::front))return combat::Weapon::gun;
-    if(_slot==int(combat::MountSlot::side))return combat::Weapon::sides;
-    return choice==1?combat::Weapon::missile:combat::Weapon::trap;
+    if(!choice)return combat::Weapon::empty;
+    const combat::Weapon candidates[3][3]={{combat::Weapon::gun,combat::Weapon::sniper,combat::Weapon::empty},
+        {combat::Weapon::sides,combat::Weapon::front_shooter,combat::Weapon::empty},
+        {combat::Weapon::missile,combat::Weapon::trap,combat::Weapon::radio}};
+    const int available=_slot==int(combat::MountSlot::special)?3:2;
+    for(int index=0;index<available;++index)if(_owned_weapons&(1u<<int(candidates[_slot][index])))
+        if(!--choice)return candidates[_slot][index];
+    return combat::Weapon::empty;
 }
 
 combat::Weapon weapon_fitting_scene::inventory_weapon() const { return _choice_weapon(_inventory_selection); }
@@ -83,18 +93,29 @@ void weapon_fitting_scene::_refresh(const combat::World& world) {
     const auto front=world.fitted_weapon(combat::MountSlot::front);
     const auto side=world.fitted_weapon(combat::MountSlot::side);
     const auto special=world.fitted_weapon(combat::MountSlot::special);
-    const bool front_visible=front==combat::Weapon::gun;
-    const bool side_visible=side==combat::Weapon::sides;
-    const bool special_visible=special==combat::Weapon::missile || special==combat::Weapon::trap;
+    const bool front_visible=front==combat::Weapon::gun || front==combat::Weapon::sniper;
+    const bool side_visible=side==combat::Weapon::sides || side==combat::Weapon::front_shooter;
+    const bool special_visible=special==combat::Weapon::missile || special==combat::Weapon::trap ||
+                               special==combat::Weapon::radio;
     _front_left.set_visible(front_visible);_front_right.set_visible(front_visible);
     _side_left.set_visible(side_visible);_side_right.set_visible(side_visible);
     _special_left.set_visible(special_visible);_special_right.set_visible(special_visible);
+    if(front_visible) {
+        const int attachment=front==combat::Weapon::sniper?5:0;
+        _front_left.set_tiles(bn::sprite_items::garage_car_attachments.tiles_item(),_car_type*14+attachment*2);
+        _front_right.set_tiles(bn::sprite_items::garage_car_attachments.tiles_item(),_car_type*14+attachment*2+1);
+    }
+    if(side_visible) {
+        const int attachment=side==combat::Weapon::front_shooter?6:1;
+        _side_left.set_tiles(bn::sprite_items::garage_car_attachments.tiles_item(),_car_type*14+attachment*2);
+        _side_right.set_tiles(bn::sprite_items::garage_car_attachments.tiles_item(),_car_type*14+attachment*2+1);
+    }
     if(special_visible) {
-        const int attachment=special==combat::Weapon::missile?2:3;
+        const int attachment=special==combat::Weapon::missile?2:special==combat::Weapon::trap?3:4;
         _special_left.set_tiles(bn::sprite_items::garage_car_attachments.tiles_item(),
-                                _car_type*8+attachment*2);
+                                _car_type*14+attachment*2);
         _special_right.set_tiles(bn::sprite_items::garage_car_attachments.tiles_item(),
-                                 _car_type*8+attachment*2+1);
+                                 _car_type*14+attachment*2+1);
     }
     for(int slot=0;slot<combat::mount_slot_count;++slot) {
         const auto fitted=world.fitted_weapon(combat::MountSlot(slot));

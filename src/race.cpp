@@ -76,6 +76,12 @@ void manager::reset(uint32_t map_seed) {
     _map_seed=map_seed;_offer=course();_current=course();_serial=0;_award_taken=false;
 }
 
+bool manager::restore(uint32_t map_seed,int serial) {
+    if(serial<0) { reset(map_seed);return false; }
+    _map_seed=map_seed;_offer=course();_current=course();_serial=serial;_award_taken=false;
+    return true;
+}
+
 bool manager::_find_path(int start,int target,const cave_layout& layout,const road_network* roads,
                          bool exclude_towns,scratch& work,int& length) {
     for(int index=0;index<cave_layout::count;++index)work.parent[index]=-1;

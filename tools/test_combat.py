@@ -27,17 +27,16 @@ def run(t):
             grouped_geometry &= 0<b['remaining']<=120
             if not b['hostile']:
                 dx=b['x']-s['x'];dy=b['y']-s['y']
-                grouped_geometry &= ((0<dx<=135 and abs(dy)<1) or
-                                     (abs(dx)<1 and 0<abs(dy)<=135))
+                grouped_geometry &= 0<dx<=135 and abs(dy)<1
         if frame==8: t.capture('combat/gunfire')
         if c['enemies'][0]['hp']==0 and first_dead is None:
             first_dead=frame
         if first_dead is not None and frame==first_dead+2: t.capture('combat/destruction')
     t.check('R fires forward without changing vehicle setup',t.state()['setup']==setup and c['player_shots']>=8,c)
     weapons=t.weapon_state()
-    t.check('Grouped guns travel on their fitted axes within half-screen range and pools stay bounded',
+    t.check('The starter gun travels forward within half-screen range and its pool stays bounded',
             grouped_geometry and c['bullets']<=24 and weapons['shots'][0]==10 and
-            weapons['shots'][2]==14 and weapons['shots'][3]==0 and c['player_shots']==24,
+            weapons['shots'][2]==0 and weapons['shots'][3]==0 and c['player_shots']==10,
             dict(combat=c,weapons=weapons))
     t.check('Enemy takes three distinct hits then is destroyed',all(h in hp_history for h in (2,1,0)) and
             c['kills']>=1 and c['hits']>=3 and c['living']<=5,dict(history=hp_history,combat=c))

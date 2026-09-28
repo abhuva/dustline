@@ -53,6 +53,10 @@ void generate(int map_index,cave_layout::progress_fn callback) {
     if(scratch->roads.width) {
         if(!roads) roads.reset(new road_network());
         *roads=scratch->roads;
+        for(int index=0;index<recipe.portal_count;++index) {
+            const auto& portal=recipe.portals[index];
+            roads->connect_portal(*current,scratch->scratch,portal.x,portal.y);
+        }
     } else roads.reset();
     if(recipe.material_count) {
         begin_stage(recipe.material_count);

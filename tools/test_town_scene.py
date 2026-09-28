@@ -5,6 +5,10 @@ import test_rom as t
 
 def run():
     t.start_map(0)
+    fresh=t.weapon_state()
+    t.check('A new game owns and fits only the standard front gun',
+            (fresh['front'],fresh['side'],fresh['special'])==(0,5,5) and fresh['mask']==1,fresh)
+    t.load_test_profile(t.ROOT/'build/dustline-shop-test.sav',scrap=500,credits=5000,owned=0)
     for _ in range(360):
         if t.step(t.A)['mode']==3:
             break
@@ -39,14 +43,22 @@ def run():
     t.capture('town/garage-menu')
     t.check('Garage counter has solid rectangular collision',72<=counter['y']<=78,counter)
     t.check('Mechanic opens without facing the counter',menu['menu'],menu)
-    t.tap(t.DOWN);t.capture('town/garage-fabricator');fabricator=t.progression_state()
-    t.check('Mechanic supplies the basic plan and opens the fabricator page',fabricator['menu_page']==1 and
-            fabricator['blueprints']&1 and not fabricator['crafted'],fabricator)
-    t.tap(t.A);insufficient=t.progression_state()
-    t.check('Fabricator refuses a print without credits and scrap',not insufficient['crafted'] and
-            insufficient['scrap']==0,insufficient)
-    t.tap(t.DOWN)
-    t.check('Mechanic menu now contains only setup and fabricator pages',
+    t.tap(t.DOWN);t.capture('town/garage-shop');shop=t.progression_state()
+    t.check('Mechanic opens a nine-item direct-purchase shop grid',
+            shop['menu_page']==1 and shop['shop_selection']==0 and shop['owned']==0,shop)
+    t.tap(t.R);t.capture('town/garage-shop-info');info=t.progression_state()
+    t.check('R opens information for the highlighted shop item',info['shop_info_open'],info)
+    t.tap(t.R)
+    # Buy the complete 3x3 catalog: row 0 left-to-right, then rows 1 and 2.
+    t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A)
+    t.tap(t.DOWN);t.tap(t.A);t.tap(t.LEFT);t.tap(t.A);t.tap(t.LEFT);t.tap(t.A)
+    t.tap(t.DOWN);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A)
+    purchased=t.progression_state();t.capture('town/garage-shop-purchased')
+    t.check('A directly buys every upgrade and weapon using gold plus scrap',
+            purchased['owned']==0x1ff and purchased['scrap']==384 and
+            t.mission_state()['credits']==2870,purchased)
+    t.tap(t.B)
+    t.check('B returns from the shop grid to setup',
             t.progression_state()['menu_page']==0,t.progression_state())
     t.tap(t.B)
 
@@ -60,7 +72,7 @@ def run():
     t.capture('town/garage-weapons')
     t.check('Car trigger loads a separate weapon-fitting scene',
             t.state()['mode']==8 and loadout['menu_page']==2 and loadout['loadout_slot']==0 and
-            (weapons['front'],weapons['side'],weapons['special'])==(0,2,3) and weapons['mask']==13,
+            (weapons['front'],weapons['side'],weapons['special'])==(0,5,5) and weapons['mask']==1,
             dict(state=t.state(),menu=loadout,weapons=weapons))
     t.tap(t.A);opened=t.progression_state();t.capture('town/garage-weapon-inventory')
     t.check('A opens only the compatible inventory for the selected front slot',
@@ -71,11 +83,14 @@ def run():
     t.tap(t.B);t.tap(t.LEFT);t.tap(t.A)
     removed=t.weapon_state()
     t.check('A equips EMPTY from the front inventory and returns to the slot view',
-            removed['front']==5 and removed['mask']==12 and not t.progression_state()['inventory_open'],removed)
+            removed['front']==5 and removed['mask']==0 and not t.progression_state()['inventory_open'],removed)
     t.tap(t.RIGHT);t.tap(t.A);t.tap(t.B)
     t.check('B cancels a compatible inventory without changing the side mount',
-            t.weapon_state()['side']==2 and not t.progression_state()['inventory_open'],t.weapon_state())
-    t.tap(t.RIGHT);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A)
+            t.weapon_state()['side']==5 and not t.progression_state()['inventory_open'],t.weapon_state())
+    t.tap(t.A);t.tap(t.RIGHT);t.tap(t.RIGHT);t.tap(t.A)
+    t.check('The side slot accepts the purchased twin forward shooter',
+            t.weapon_state()['side']==8,t.weapon_state())
+    t.tap(t.RIGHT);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.RIGHT);t.tap(t.A)
     fitted=t.weapon_state();t.capture('town/garage-trap-fitted')
     t.check('The top slot accepts the alternate trap special',
             fitted['special']==4 and fitted['mask']==20,fitted)
@@ -88,7 +103,9 @@ def run():
 
     # Return to the mechanic through the central aisle.
     t.step(t.RIGHT,30);t.step(t.UP,60);t.tap(t.A)
-    t.tap(t.SELECT);t.check('Settings can open over the mechanic menu',t.state()['mode']==6,t.state())
+    t.step(0,4)
+    t.tap(t.SELECT);t.step(0,12)
+    t.check('Settings can open over the mechanic menu',t.state()['mode']==6,t.state())
     t.tap(t.SELECT);t.capture('town/garage-menu-resumed')
     t.check('Closing settings restores the mechanic menu',t.state()['mode']==4 and
             t.town_state()['menu'],t.town_state())
@@ -102,11 +119,13 @@ def run():
     outside=t.town_state()
     t.check('Garage exit works without facing the doorway',outside['place']==0 and
             outside['x']==128 and outside['y']==51,outside)
-    t.step(t.DOWN,190);t.tap(t.A);t.step(0,20)
+    t.step(t.DOWN,190);t.tap(t.A);t.step(0,8)
+    if t.state()['mode']==4 and t.town_state()['prompt']:
+        t.tap(t.A);t.step(0,20)
     t.check('Town south gate restores the overworld',t.state()['mode']==1,t.state())
     before=t.weapon_state();t.tap(t.L);after=t.weapon_state()
     t.check('Garage fittings persist to map play and L deploys the fitted trap',
-            (after['front'],after['side'],after['special'])==(5,2,4) and
+            (after['front'],after['side'],after['special'])==(5,8,4) and
             after['shots'][4]==before['shots'][4]+1 and any(p['remaining'] for p in after['traps']),after)
 
 

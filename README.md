@@ -19,9 +19,12 @@ from the latest release and open it with [mGBA](https://mgba.io/) or RetroArch's
 Nintendo - Game Boy Advance (mGBA) core. This is a complete homebrew ROM; no base
 game, patch, or GBA BIOS is required.
 
-The current build is an in-development prototype. Contracts and earned credits
-last for the current run only; there are no cartridge saves, inventory, shop
-economy, or persistent progression yet.
+The current build is an in-development prototype. A manual development save in
+the vehicle lab persists position, setup, inventory, vitals, credits and contract
+progress in cartridge SRAM. There is not yet an automatic save. A valid manual
+save enables CONTINUE GAME on the title, and mGBA and RetroArch persist this as their normal battery-save
+file; emulator save-states also capture it, although the in-game save is the
+portable option across emulator versions and devices.
 
 ## Controls
 
@@ -31,9 +34,9 @@ economy, or persistent progression yet.
 | B | Brake, then reverse | Cancel |
 | Left / Right | Steer | Choose or adjust menu values |
 | Up / Down | Unused | Choose menu rows; walk in towns |
-| L | Fire fitted top special | Switch vehicle-lab panel |
-| R | Fire fitted front and side weapons | Switch vehicle-lab panel; weapon info |
-| Select | Open vehicle lab | Return from pause to map selection |
+| L | Fire fitted top special | Previous field-menu page |
+| R | Fire fitted front and side weapons | Next field-menu page; weapon info |
+| Select | Open field menu | Return from pause to title |
 | Start | Pause | Resume |
 
 Try releasing the throttle before a bend, turning through it, and applying power
@@ -45,32 +48,45 @@ wander and longer slides, gravel chatters, hardpan produces a light rumble, and
 roads remain stable. The HUD label follows the same road-aware material sample as
 the physics.
 
-Press Select while driving to open the Handling Lab. It exposes acceleration,
+Press Select while driving to open the field menu. L/R switches between its Map,
+Handling, Audio Control and Save Data pages. On the Map page, Left/Right cycles
+the player, named towns and Portals; the selected destination receives a large
+marker and a label such as `ROAD TO WASTELAND`. The Handling page exposes acceleration,
 maximum speed, grip, steering, neutral coast drag, brake force and mass over deliberately broad test ranges;
 Up/Down chooses a property, Left/Right adjusts it, and A restores the fitted
-garage preset. L/R switches between the Handling and Audio Control panels. Audio
-Control independently adjusts music and sound-effect volume in 10% steps and
-provides a master mute; these choices persist for the current session. Music
-starts at 0%, while sound effects start at 100%.
+garage preset. Audio Control independently adjusts music and sound-effect volume in 10% steps and
+provides a master mute. Save Data offers Save Game, Load Game and a two-press
+Erase Save action; saved audio choices return with the profile. Music starts at
+0%, while sound effects start at 100%.
 
 ## What's in the prototype
 
 - A native GBA ROM written in C++ with Butano and devkitARM.
-- Seven fixed-seed 8192 x 8192 procedural maps selected from the title screen.
+- Fixed-seed 8192 x 8192 procedural regions connected by authored Portals; New
+  Game begins at the configured world start and Continue restores a manual save.
 - Fixed elevated 2D presentation with momentum, grip-limited sliding, braking,
   reverse, terrain collisions, and three distinct vehicle setups.
 - Streaming terrain, a fixed-2x minimap, outposts, walkable towns, and a garage.
 - Signed town services with proximity-based, animated button prompts.
-- Deterministic courier and marked-raider contracts from town dispatch boards.
+- Deterministic multi-region courier and marked-raider contracts from town dispatch boards.
 - A separate race office with hub-to-outpost road events and generated open or
   closed wilderness courses, sequential gates, scoring, payouts and course-abort rules.
 - Pooled enemy drivers and garage-fitted front, side, missile, and trap weapons.
+- A garage-fitted radio receiver that trades the top weapon slot for directional
+  discovery of repeatable, randomly placed shootable salvage barrels.
 - Player health, a rechargeable shield, battery energy, synthesized effects, an adaptive
   eight-channel tracker soundtrack, and original pixel art.
 - Local browser-based map and music workshops shared with the ROM generators.
 
 For the complete gameplay notes, current limitations, architecture, map-workshop
 guide, and verification details, see [readme.txt](readme.txt).
+
+## Design notes
+
+- [World activities and radio-signal discovery prototype](docs/world-activities.md)
+- [ADR-001: Directional proximity signals](docs/adr/ADR-001-radio-signal-discovery.md)
+- [ADR-002: Radio receiver as top-slot equipment](docs/adr/ADR-002-radio-top-slot-equipment.md)
+- [ADR-003: Repeatable radio-signal pool](docs/adr/ADR-003-repeatable-radio-signal-pool.md)
 
 ## Build locally
 
@@ -142,6 +158,17 @@ foreground decorations, wall set, and town set. The build packs one deduplicated
 tile/palette bank for every distinct in-game profile; only the selected map's
 bank is loaded into GBA VRAM. Save the map, rebuild, and reload the workshop to
 see source-art changes or a newly packed profile in the game-texture preview.
+
+Use the default **Placements** view to author each region's Portals and Player
+Spawns independently. A Portal is only an ID and rectangular trigger; a Player
+Spawn is an ID, position, and heading. The clean schematic shows collision,
+roads, towns, and these placements without terrain textures. Portals receive a
+shortest traversable connection to the nearest road automatically.
+
+Open **World map** to arrange enabled regions and connect each source Portal to
+one destination Player Spawn. Transitions are directed, so the return trip is a
+separate connection. The editor validates that every Portal has one destination
+and every region is reachable from the chosen starting region and spawn.
 
 ## Continuous delivery
 

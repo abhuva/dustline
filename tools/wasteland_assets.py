@@ -176,7 +176,9 @@ def build_bank(source, detail_source, profile, catalog, ui_palette):
     for index,art in enumerate(textures):sample.paste(art.convert('RGB'),((index%4)*32,(index//4)*32))
     for index,art in enumerate(town_art):sample.paste(art.convert('RGB'),(128+index*64,0),art.getchannel('A'))
     adaptive=sample.quantize(colors=208,method=Image.Quantize.MEDIANCUT)
-    material_palette=[(value//8)*8 for value in adaptive.getpalette()[:624]]
+    material_values=adaptive.getpalette()[:624]
+    material_values+=[0]*(624-len(material_values))
+    material_palette=[(value//8)*8 for value in material_values]
     colors=[tuple(ui_palette[i:i+3]) for i in range(0,48,3)];remap=[]
     for i in range(0,624,3):
         color=tuple(material_palette[i:i+3])
@@ -215,7 +217,9 @@ def build_bank(source, detail_source, profile, catalog, ui_palette):
     pixels=[pixel[:3] for image in detail_rgba for pixel in image.getdata() if pixel[3]]
     strip=Image.new('RGB',(len(pixels),1));strip.putdata(pixels)
     detail_quantized=strip.quantize(colors=15,method=Image.Quantize.MEDIANCUT)
-    detail_colors=[tuple((value//8)*8 for value in detail_quantized.getpalette()[i:i+3]) for i in range(0,45,3)]
+    detail_values=detail_quantized.getpalette()[:45]
+    detail_values+=[0]*(45-len(detail_values))
+    detail_colors=[tuple((value//8)*8 for value in detail_values[i:i+3]) for i in range(0,45,3)]
     detail_palette=[0,0,0]+[component for color in detail_colors for component in color]
     full_palette[224*3:240*3]=detail_palette
     patches=[]

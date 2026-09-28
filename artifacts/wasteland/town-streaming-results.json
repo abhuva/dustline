@@ -1,5 +1,5 @@
 {
-  "rom_sha256": "aa998b09769f790e47b0b4dee6502ce4f3672c37d6089ba1996a5614d779be50",
+  "rom_sha256": "1e44066dd031135a3609ef4a58198a86e7adca35807ffa388a1b9f5832d43ec6",
   "checks": [
     {
       "name": "Town approach phase 0 opens without dropped frames",
@@ -7,7 +7,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.681396484375
+        "cpu_peak": 0.626953125
       }
     },
     {
@@ -16,7 +16,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.679443359375
       }
     },
     {
@@ -25,7 +25,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.750244140625
       }
     },
     {
@@ -34,7 +34,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.750244140625
       }
     },
     {
@@ -43,7 +43,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.750244140625
       }
     },
     {
@@ -52,7 +52,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.750244140625
       }
     },
     {
@@ -61,7 +61,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.764892578125
       }
     },
     {
@@ -70,7 +70,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.764892578125
       }
     },
     {
@@ -79,7 +79,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.764892578125
       }
     },
     {
@@ -88,7 +88,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.782958984375
       }
     },
     {
@@ -97,7 +97,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.80224609375
       }
     },
     {
@@ -106,7 +106,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.771240234375
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -115,7 +115,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -124,7 +124,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -133,7 +133,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -142,7 +142,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -151,7 +151,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -160,7 +160,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -169,7 +169,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -178,7 +178,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -187,7 +187,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -196,7 +196,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -205,7 +205,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {
@@ -214,7 +214,7 @@
       "details": {
         "missed": 1,
         "baseline": 1,
-        "cpu_peak": 0.805419921875
+        "cpu_peak": 0.806640625
       }
     },
     {

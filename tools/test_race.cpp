@@ -84,4 +84,6 @@ int main() {
         }
     }
     assert(saw_open && saw_closed);
+    assert(manager.restore(0x12345678,19));
+    assert(manager.map_seed()==0x12345678 && manager.serial()==19 && !manager.session());
 }

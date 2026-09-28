@@ -55,6 +55,11 @@ if(process.argv.includes('--prepare')) {
   bad.version=99;assert.throws(()=>compile(bad,schema),/Unsupported/);
   const reordered=structuredClone(legacy);reordered.nodes.reverse();assert.deepEqual(compile(reordered,schema).program,compile(legacy,schema).program);
   reordered.nodes.push(makeNode(schema,'random',4));assert.deepEqual(compile(reordered,schema).program,compile(legacy,schema).program);
+  const longRecipe={version:1,name:'64 node chain',seed:42,output:64,nodes:[makeNode(schema,'random',1)]};
+  for(let id=2;id<=64;++id)longRecipe.nodes.push({...makeNode(schema,'invert',id),inputs:{a:id-1}});
+  assert.equal(compile(longRecipe,schema).program.length,64);
+  longRecipe.nodes.push({...makeNode(schema,'invert',65),inputs:{a:64}});
+  assert.throws(()=>compile(longRecipe,schema),/64 nodes/);
   const materialBad=structuredClone(examples[4]),badLut=materialBad.nodes.find(n=>n.type==='field_lut');badLut.p[4]=badLut.p[2];
   assert.throws(()=>compile(materialBad,schema),/unique/);
   delete materialBad.materialOutput;assert.throws(()=>compile(materialBad,schema),/unique|Ground/);

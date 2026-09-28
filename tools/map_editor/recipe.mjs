@@ -1,10 +1,17 @@
-export const MAX_NODES = 32;
+export const MAX_NODES = 64;
 export const LUT_MAX_POINTS = 255;
 export const PARAM_WORDS = 64;
-export const DEFAULT_SPAWN_PROFILES=[{id:0,name:'Raider',color:'#ef6c5b',enemy:'raider',respawnSeconds:30,scrapChance:70,scrapMin:1,scrapMax:3,blueprint:'tuned_injector',blueprintChance:4,energyChance:25,energyMin:8,energyMax:16}];
+export const DEFAULT_SPAWN_PROFILES=[{id:0,name:'Raider',color:'#ef6c5b',enemy:'raider',respawnSeconds:30,scrapChance:70,scrapMin:1,scrapMax:3,energyChance:25,energyMin:8,energyMax:16}];
 export function normalizeSpawnProfiles(value) {
   const source=Array.isArray(value)&&value.length?value:DEFAULT_SPAWN_PROFILES;
   return source.map(profile=>({...DEFAULT_SPAWN_PROFILES[0],...profile}));
+}
+export function normalizePlacements(recipe) {
+  const legacy=Array.isArray(recipe.nodes)?recipe.nodes.filter(node=>node.type==='gate'):[];
+  if(!Array.isArray(recipe.portals))recipe.portals=legacy.map(node=>({id:node.gateId,x:node.p[0],y:node.p[1],width:node.p[2],height:node.p[3]}));
+  if(!Array.isArray(recipe.playerSpawns))recipe.playerSpawns=legacy.map(node=>({id:`${node.gateId}_arrival`,x:node.p[4],y:node.p[5],heading:node.p[6]}));
+  if(legacy.length){recipe.nodes=recipe.nodes.filter(node=>node.type!=='gate');recipe.version=6;}
+  return recipe;
 }
 const LUT_COLORS=['#759bc7','#d6a466','#83ad79','#bd7f9f','#9a8ac7','#63aaa2','#c58a67','#a4a766'];
 export const defaultLutColor=value=>LUT_COLORS[((value*37)^(value>>2))%LUT_COLORS.length];
@@ -49,13 +56,14 @@ function compiledParameters(node) {
   return Array.from({length:PARAM_WORDS},(_,word)=>(lookup[word*4]|lookup[word*4+1]<<8|lookup[word*4+2]<<16|lookup[word*4+3]<<24));
 }
 export function compile(recipe, schema, target = recipe.output, validateAll = true) {
+  normalizePlacements(recipe);
   const fail = message => { throw new Error(message); };
   const integer = (value, lo, hi, name) => {
     if (!Number.isInteger(value) || value < lo || value > hi) fail(`${name}: expected ${lo}–${hi}.`);
   };
-  if (![1,2,3,4].includes(recipe.version) || !Array.isArray(recipe.nodes)) fail('Unsupported recipe format.');
+  if (![1,2,3,4,5,6].includes(recipe.version) || !Array.isArray(recipe.nodes)) fail('Unsupported recipe format.');
   integer(recipe.seed, 0, 0xffffffff, 'Seed');
-  if (!recipe.nodes.length || recipe.nodes.length > MAX_NODES) fail('Use between 1 and 32 nodes.');
+  if (!recipe.nodes.length || recipe.nodes.length > MAX_NODES) fail(`Use between 1 and ${MAX_NODES} nodes.`);
   const ops = new Map(schema.operations.map((op, index) => [op.id, { ...op, index }]));
   const nodes = new Map();
   for (const node of recipe.nodes) {
@@ -99,10 +107,20 @@ export function compile(recipe, schema, target = recipe.output, validateAll = tr
     if(!['scout','raider','heavy'].includes(profile.enemy))fail('Unknown enemy type.');
     integer(profile.respawnSeconds,1,600,'Respawn seconds');integer(profile.scrapChance,0,100,'Scrap chance');
     integer(profile.scrapMin,0,15,'Minimum scrap');integer(profile.scrapMax,profile.scrapMin,15,'Maximum scrap');
-    if(!['none','salvage_magnet','tuned_injector','reinforced_plating'].includes(profile.blueprint))fail('Unknown blueprint.');
-    integer(profile.blueprintChance,0,100,'Blueprint chance');
     integer(profile.energyChance,0,100,'Energy chance');integer(profile.energyMin,0,100,'Minimum energy');
     integer(profile.energyMax,profile.energyMin,100,'Maximum energy');
+  }
+  const placementId=/^[a-z0-9]+(?:_[a-z0-9]+)*$/;
+  for(const [label,items,limit,fields] of [
+    ['Portal',recipe.portals,8,[['x',0,8191],['y',0,8191],['width',16,512],['height',16,512]]],
+    ['Player spawn',recipe.playerSpawns,16,[['x',0,8191],['y',0,8191],['heading',0,359]]]]) {
+    if(!Array.isArray(items)||items.length>limit)fail(`${label}s: use at most ${limit}.`);
+    const ids=new Set();
+    for(const item of items) {
+      if(!item||typeof item.id!=='string'||item.id.length>24||!placementId.test(item.id))fail(`${label} needs a lowercase underscore ID.`);
+      if(ids.has(item.id))fail(`Duplicate ${label.toLowerCase()} ID: ${item.id}.`);ids.add(item.id);
+      for(const [field,low,high] of fields)integer(item[field],low,high,`${label} ${item.id} ${field}`);
+    }
   }
   const ordered = [], done = new Set(), visiting = new Set();
   function visit(id) {

@@ -45,7 +45,7 @@ bool line_clear(int x,int y,int to_x,int to_y) {
 }
 
 const char* weapon_name(Weapon weapon) {
-    constexpr const char* names[]={"GUN","SAW","SIDES","SEEK","TRAP"};
+    constexpr const char* names[]={"GUN","SAW","SIDES","SEEK","TRAP","EMPTY","RADIO","SNIPER","FRONT SHOOTER"};
     return names[int(weapon)];
 }
 int World::living() const { int n=0; for(const auto& e:enemies) n+=e.hp>0; return n; }
@@ -72,25 +72,32 @@ void World::set_max_energy(int maximum) {
     player_energy=bn::min(player_energy,_player_max_energy);
 }
 bool World::fit_weapon(MountSlot slot,Weapon next) {
-    const bool compatible=next==Weapon::count ||
-        (slot==MountSlot::front && next==Weapon::gun) ||
-        (slot==MountSlot::side && next==Weapon::sides) ||
-        (slot==MountSlot::special && (next==Weapon::missile || next==Weapon::trap));
+    const bool compatible=next==Weapon::empty ||
+        (slot==MountSlot::front && (next==Weapon::gun || next==Weapon::sniper)) ||
+        (slot==MountSlot::side && (next==Weapon::sides || next==Weapon::front_shooter)) ||
+        (slot==MountSlot::special && (next==Weapon::missile || next==Weapon::trap || next==Weapon::radio));
     if(!compatible)return false;
     _fitted[int(slot)]=next;
     _weapon_mask=0;
-    for(Weapon fitted:_fitted)if(fitted!=Weapon::count)_weapon_mask|=1<<int(fitted);
+    for(Weapon fitted:_fitted)switch(fitted) {
+    case Weapon::gun:case Weapon::sniper:_weapon_mask|=1;break;
+    case Weapon::chainsaw:_weapon_mask|=2;break;
+    case Weapon::sides:case Weapon::front_shooter:_weapon_mask|=4;break;
+    case Weapon::missile:_weapon_mask|=8;break;
+    case Weapon::trap:_weapon_mask|=16;break;
+    default:break;
+    }
     weapon=_fitted[int(MountSlot::front)];
     saw_active=false;
     return true;
 }
 void World::reset(const driving::Car& player,bool enabled,cave_layout::progress_fn progress) {
     _enabled=enabled; _cooldowns.fill(0); ticks=0;
-    _fitted={Weapon::gun,Weapon::sides,Weapon::missile};fit_weapon(MountSlot::front,Weapon::gun);
+    _fitted={Weapon::gun,Weapon::empty,Weapon::empty};fit_weapon(MountSlot::front,Weapon::gun);
     weapon_shots.fill(0);weapon_hits.fill(0);guidance_updates=trap_explosions=0;
     refill_player(); player_hits=player_shots=enemy_shots=hits=kills=wall_hits=expired=0;
     bumps=player_bumps=0; last_pair=-1; last_bump=0; _contact_cooldowns.fill(0);
-    clear_bullets(); for(auto& p:pickups)p=Pickup(); fired=impact=destroyed=false;destroyed_count=0;collected_scrap=0;collected_energy=0;collected_blueprints=0;
+    clear_bullets(); for(auto& p:pickups)p=Pickup(); fired=impact=destroyed=false;destroyed_count=0;collected_scrap=0;collected_energy=0;
     spawned=despawned=0; spawns.count=0;
     for(auto& e:enemies) e=Enemy();
     if(enabled) {
@@ -210,7 +217,8 @@ void World::think(Enemy& e,const driving::Car& player) {
     e.input={c.speed<limit,c.speed>limit+fixed(0.15),steer};
 }
 
-bool World::shoot(const driving::Car& car,bool hostile,int angle,bool side) {
+bool World::shoot(const driving::Car& car,bool hostile,Weapon source,int angle,int lateral,
+                  int range,int speed,int damage_amount) {
     for(auto& b:bullets) if(b.remaining==0) {
         fixed heading=wrap(car.heading+angle);
         fixed cx=bn::degrees_lut_cos(heading),sy=bn::degrees_lut_sin(heading);
@@ -218,9 +226,11 @@ bool World::shoot(const driving::Car& car,bool hostile,int angle,bool side) {
         for(int d=2;d<=14;d+=4) if(solid((car.x+cx*d).integer(),(car.y+sy*d).integer())) {
             ++wall_hits; return false;
         }
-        b.x=car.x+cx*14; b.y=car.y+sy*14; b.vx=cx*6; b.vy=sy*6;
-        b.remaining=player_range; b.hostile=hostile;b.side=side;
-        if(hostile) ++enemy_shots; else { ++player_shots; ++weapon_shots[int(side?Weapon::sides:Weapon::gun)]; fired=true; }
+        b.x=car.x+cx*14-sy*lateral;b.y=car.y+sy*14+cx*lateral;
+        b.vx=cx*speed;b.vy=sy*speed;b.remaining=range;b.damage=damage_amount;
+        b.hostile=hostile;b.source=source;
+        if(hostile)++enemy_shots;
+        else { ++player_shots;++weapon_shots[int(source)];fired=true; }
         return true;
     }
     return false;
@@ -247,27 +257,24 @@ void World::drop_loot(Enemy& e) {
         int range=profile.scrap_max-profile.scrap_min+1;
         uint8_t amount=uint8_t(profile.scrap_min+(range>0?int((roll>>8)%unsigned(range)):0));if(amount)add(0,amount,-7);
     }
-    if(profile.blueprint_drop!=spawn_profiles::blueprint::none && int((roll>>16)%100)<profile.blueprint_chance)
-        add(1,uint8_t(profile.blueprint_drop),7);
     const uint32_t energy_roll=mapgen::hash(roll^0x9E3779B9u);
     if(int(energy_roll%100)<profile.energy_chance) {
         const int range=profile.energy_max-profile.energy_min+1;
         const uint8_t amount=uint8_t(profile.energy_min+(range>0?int((energy_roll>>8)%unsigned(range)):0));
-        if(amount)add(2,amount,0);
+        if(amount)add(1,amount,0);
     }
 }
 void World::update_pickups(const driving::Car& player) {
     const int magnet=_salvage_magnet?96:48;
     for(auto& pickup:pickups)if(pickup.remaining) {
         --pickup.remaining;int dx=player.x.integer()-pickup.x.integer(),dy=player.y.integer()-pickup.y.integer();
-        if(pickup.kind==2 && player_energy>=_player_max_energy)continue;
+        if(pickup.kind==1 && player_energy>=_player_max_energy)continue;
         if(abs(dx)<=magnet && abs(dy)<=magnet && dx*dx+dy*dy<=magnet*magnet) {pickup.x+=fixed(dx)/8;pickup.y+=fixed(dy)/8;}
         if(abs(dx)<=12 && abs(dy)<=12) {
-            if(pickup.kind==2) {
+            if(pickup.kind==1) {
                 const int before=player_energy;player_energy=bn::min(_player_max_energy,player_energy+pickup.value);
                 collected_energy+=player_energy-before;
-            } else if(pickup.kind==1)collected_blueprints|=uint8_t(1<<pickup.value);
-            else collected_scrap+=pickup.value;
+            } else collected_scrap+=pickup.value;
             pickup.remaining=0;
         }
     }
@@ -302,14 +309,27 @@ void World::fire_weapon(const driving::Car& player,Weapon candidate) {
     if(_cooldowns[id])return;
     if(player_energy<weapon_energy_costs[id])return;
     switch(candidate) {
-    case Weapon::gun: shoot(player,false);_cooldowns[id]=player_interval;break;
+    case Weapon::gun:shoot(player,false,Weapon::gun);_cooldowns[id]=player_interval;break;
+    case Weapon::sniper:
+        if(shoot(player,false,Weapon::sniper,0,0,sniper_range,8,sniper_damage))
+            player_energy-=weapon_energy_costs[id];
+        _cooldowns[id]=sniper_interval;break;
     case Weapon::sides: {
         int free=0;for(const auto& b:bullets)free+=!b.remaining;
         if(free>=2) {
-            const bool left=shoot(player,false,-90,true),right=shoot(player,false,90,true);
+            const bool left=shoot(player,false,Weapon::sides,-90),right=shoot(player,false,Weapon::sides,90);
             if(left || right)player_energy-=weapon_energy_costs[id];
         }
         _cooldowns[id]=16;break;
+    }
+    case Weapon::front_shooter: {
+        int free=0;for(const auto& b:bullets)free+=!b.remaining;
+        if(free>=2) {
+            const bool left=shoot(player,false,Weapon::front_shooter,0,-7);
+            const bool right=shoot(player,false,Weapon::front_shooter,0,7);
+            if(left || right)player_energy-=weapon_energy_costs[id];
+        }
+        _cooldowns[id]=front_shooter_interval;break;
     }
     case Weapon::missile:
         for(auto& m:missiles)if(!m.remaining && !m.explosion) {
@@ -387,14 +407,14 @@ bool World::hit_at(Bullet& b,const driving::Car& player) {
     if(b.hostile) {
         if(close(x,y,player,10)) { damage_player(1); return true; }
     } else for(auto& e:enemies) if(e.hp>0 && close(x,y,e.car,11)) {
-        damage(e,1,b.side?Weapon::sides:Weapon::gun);
+        damage(e,b.damage,b.source);
         return true;
     }
     return false;
 }
 
 void World::step(driving::Car& player,bool normal_fire,bool special_fire) {
-    fired=impact=destroyed=false;destroyed_count=0;collected_scrap=0;collected_energy=0;collected_blueprints=0;
+    fired=impact=destroyed=false;destroyed_count=0;collected_scrap=0;collected_energy=0;
     if(!_enabled) return;
     ++ticks;
     if(player_invulnerability)--player_invulnerability;
@@ -452,7 +472,7 @@ void World::step(driving::Car& player,bool normal_fire,bool special_fire) {
                 for(int k=1;k<=steps;++k) if(solid(e.car.x.integer()+dx*k/steps,e.car.y.integer()+dy*k/steps)) {
                     visible=false; break;
                 }
-                if(visible) { shoot(e.car,true); e.cooldown=enemy_interval; }
+                if(visible) { shoot(e.car,true);e.cooldown=enemy_interval; }
                 else e.cooldown=12;
             }
         }

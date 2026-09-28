@@ -15,11 +15,50 @@ from compile_recipe import ROOT, validate_library
 library = json.loads((ROOT / 'maps/map-library.json').read_text())
 enabled = validate_library(copy.deepcopy(library))
 assert len(enabled) == sum(entry['includeInGame'] for entry in library['maps'])
+assert library['world']['start'] == {'map': 'wasteland', 'spawn': 'start'}
+assert len(library['world']['nodes']) == len(enabled)
+connection_count = len(library['world']['connections'])
+assert connection_count > 0
+
+broken_world = copy.deepcopy(library)
+broken_world['world']['connections'].pop()
+validate_library(broken_world)
+assert len(broken_world['world']['connections']) == connection_count - 1
+
+missing_spawn = copy.deepcopy(library)
+missing_spawn['world']['connections'][0]['to']['spawn'] = 'missing'
+validate_library(missing_spawn)
+assert len(missing_spawn['world']['connections']) == connection_count - 1
+
+disabled = copy.deepcopy(library)
+disabled_id = 'two-rules-radial'
+next(entry for entry in disabled['maps'] if entry['id'] == disabled_id)['includeInGame'] = False
+validate_library(disabled)
+assert disabled_id not in {node['map'] for node in disabled['world']['nodes']}
+assert all(link['from']['map'] != disabled_id and link['to']['map'] != disabled_id
+           for link in disabled['world']['connections'])
+
+disabled_start = copy.deepcopy(library)
+next(entry for entry in disabled_start['maps'] if entry['id'] == 'wasteland')['includeInGame'] = False
+validate_library(disabled_start)
+assert disabled_start['world']['start']['map'] != 'wasteland'
+assert disabled_start['world']['start']['map'] in {entry['id'] for entry in disabled_start['maps']
+                                                    if entry['includeInGame']}
+
+new_region = copy.deepcopy(library)
+new_entry = copy.deepcopy(next(entry for entry in library['maps'] if entry['id'] == 'wasteland'))
+new_entry['id'] = 'new-region'
+new_entry['recipe']['name'] = 'New region'
+new_region['maps'].append(new_entry)
+validate_library(new_region)
+assert any(node['map'] == 'new-region' for node in new_region['world']['nodes'])
+assert all(link['from']['map'] != 'new-region' and link['to']['map'] != 'new-region'
+           for link in new_region['world']['connections'])
 
 draft = {
     'id': 'empty-draft',
     'includeInGame': False,
-    'recipe': {'version': 3, 'name': 'Empty draft', 'seed': 42, 'nodes': []},
+    'recipe': {'version': 6, 'name': 'Empty draft', 'seed': 42, 'nodes': [], 'portals': [], 'playerSpawns': []},
 }
 with_draft = copy.deepcopy(library)
 with_draft['maps'].append(copy.deepcopy(draft))
@@ -60,4 +99,4 @@ with tempfile.TemporaryDirectory() as folder:
         server.server_close()
         thread.join()
 
-print(f'PASS shared map library: {len(enabled)} compiled maps, draft persistence, atomic API and conflict guard.')
+print(f'PASS shared map library: {len(enabled)} compiled maps, partial/pruned world graph, draft persistence, atomic API and conflict guard.')

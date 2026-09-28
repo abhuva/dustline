@@ -11,6 +11,26 @@ int width();
 int height();
 int start_x();
 int start_y();
+int start_heading();
+int start_map();
+int start_spawn();
+const char* name(int index);
+const char* town_name(int town_index);
+uint32_t persistent_id(int index);
+int find_persistent_id(uint32_t id);
+uint32_t catalog_signature();
+struct portal_info {
+    int x,y,width,height;
+    int destination_map,destination_spawn;
+};
+struct player_spawn_info { int x,y,heading; };
+int portal_count();
+portal_info portal(int index);
+int nearby_portal(int x,int y);
+int player_spawn_count();
+player_spawn_info player_spawn(int index);
+int route_portal(int target_map);
+int route_distance(int from_map,int to_map);
 int tile_slots();
 // Nonzero when the complete tile vocabulary fits in the reserved VRAM.
 int resident_tile_count();

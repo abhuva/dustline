@@ -104,6 +104,10 @@ int recipe_apply_materials() {
     for(int i=0;i<4096;++i) ground[i]=result.data[i];
     ground_active=true;return 0;
 }
+int recipe_connect_portal(int x,int y) {
+    if(!world_ready || !work.roads.width)return 0;
+    return work.roads.connect_portal(work.layout,work.scratch,x,y)?0:1;
+}
 const uint8_t* recipe_ground() {
     if(!world_ready)return nullptr;
     if(!ground_active)for(int y=0;y<64;++y)for(int x=0;x<64;++x)ground[y*64+x]=uint8_t(work.layout.material(x*128+64,y*128+64));
@@ -119,6 +123,13 @@ uint32_t recipe_render_signature() {
     return value;
 }
 #ifdef __EMSCRIPTEN__
+const uint8_t* recipe_roads() {
+    if(!world_ready)return nullptr;
+    auto* road_pixels=reinterpret_cast<uint8_t*>(render_tiles);
+    for(int y=0;y<1024;++y)for(int x=0;x<1024;++x)
+        road_pixels[y*1024+x]=uint8_t(work.roads.contains(x*8+4,y*8+4));
+    return road_pixels;
+}
 const uint16_t* recipe_tiles() {
     if(!world_ready)return nullptr;
     ensure_material_lookups();
@@ -166,7 +177,7 @@ int main() {
 }
 #else
 int main(int argc,char** argv) {
-    if(argc!=4 && argc!=5 && argc!=7) return 2;
+    if(argc!=4 && argc!=5 && argc!=7 && argc!=8) return 2;
     auto* input=std::fopen(argv[1],"rb"); if(!input) return 3;
     int count=int(std::fread(nodes,sizeof(mapgen::node),mapgen::max_nodes,input)); std::fclose(input);
     int status=recipe_run(count,uint32_t(std::strtoul(argv[2],nullptr,0)));
@@ -180,13 +191,20 @@ int main(int argc,char** argv) {
             status=recipe_run(count,uint32_t(std::strtoul(argv[2],nullptr,0)));
             if(status || recipe_apply_materials()){std::fprintf(stderr,"material branch failed: %d\\n",status);std::fclose(output);return 5;}
         }
+        if(argc==8 && argv[7][0]!='-') {
+            input=std::fopen(argv[7],"rb");if(!input){std::fclose(output);return 3;}
+            uint16_t portal[2];
+            while(std::fread(portal,sizeof(portal),1,input)==1)
+                if(recipe_connect_portal(portal[0],portal[1])){std::fclose(input);std::fclose(output);return 6;}
+            std::fclose(input);
+        }
         std::fwrite(recipe_ground(),1,4096,output);
         for(int y=0;y<1024;++y)for(int x=0;x<1024;++x){
             uint16_t tile=wasteland_tiles::reference(work.layout,ground_active?ground:nullptr,x,y,&work.roads);
             std::fwrite(&tile,2,1,output);
         }
         uint32_t signature=recipe_render_signature();std::fwrite(&signature,4,1,output);
-        if(argc==7) {
+        if(argc>=7) {
             for(int arg=5;arg<=6;++arg)if(argv[arg][0]!='-') {
                 input=std::fopen(argv[arg],"rb");if(!input){std::fclose(output);return 3;}
                 count=int(std::fread(nodes,sizeof(mapgen::node),mapgen::max_nodes,input));std::fclose(input);

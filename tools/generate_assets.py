@@ -406,10 +406,11 @@ def sprites():
     d.rectangle((2,26,5,29),fill=8)
     save('particles',fx,'sprite',height=8)
     # Tiny combat UI/effects extend the existing procedural sprite palette.
-    bullet=img((8,24),sprite=True); d=ImageDraw.Draw(bullet)
+    bullet=img((8,32),sprite=True); d=ImageDraw.Draw(bullet)
     d.rectangle((2,3,5,4),fill=7); d.rectangle((3,2,4,5),fill=8)
     d.rectangle((2,11,5,12),fill=10); d.rectangle((3,10,4,13),fill=8)
     d.rectangle((2,18,5,21),fill=6);d.point((3,19),fill=7)
+    d.rectangle((1,26,6,29),fill=7);d.rectangle((2,25,5,30),fill=15);d.rectangle((3,24,4,31),fill=8)
     save('combat_bullet',bullet,'sprite',height=8)
     # Original 4bpp weapon art. Pre-rotated missiles avoid affine sprite costs.
     saw=img((32,128),sprite=True)
@@ -452,8 +453,8 @@ def sprites():
     # Larger, square inventory portraits echo stamped garage-part catalogues.
     # They use the warm metal/oxide half of the sprite palette instead of the
     # bright driving colours, so the dedicated fitting screen has its own mood.
-    icons=img((32,32*6),sprite=True)
-    for frame in range(6):
+    icons=img((32,32*9),sprite=True)
+    for frame in range(9):
         y=frame*32;d=ImageDraw.Draw(icons)
         d.rectangle((3,y+3,28,y+28),fill=2,outline=14)
         d.line((5,y+5,26,y+5),fill=8);d.line((5,y+26,26,y+26),fill=1)
@@ -483,11 +484,57 @@ def sprites():
             d.rectangle((11,y+10,21,y+19),fill=15,outline=12)
             d.rectangle((13,y+5,19,y+8),fill=13)
             d.rectangle((12,y+19,20,y+23),fill=10)
-        else:              # empty mounting plate
+        elif frame==5:     # empty mounting plate
             d.rectangle((9,y+9,22,y+22),fill=1,outline=13)
             d.line((11,y+11,20,y+20),fill=15,width=2)
             d.line((20,y+11,11,y+20),fill=15,width=2)
+        elif frame==6:     # passive radio-signal receiver
+            d.rectangle((7,y+16,24,y+24),fill=3,outline=1)
+            d.rectangle((10,y+18,21,y+21),fill=13,outline=14)
+            d.line((16,y+16,16,y+7),fill=12,width=2)
+            d.line((16,y+8,21,y+4),fill=12,width=2)
+            d.point((11,y+20),fill=10)
+            for radius in (3,6):
+                d.arc((16-radius,y+7-radius,16+radius,y+7+radius),200,340,fill=8,width=1)
+        elif frame==7:     # long-range sniper
+            d.rectangle((5,y+13,27,y+18),fill=12,outline=1)
+            d.rectangle((9,y+18,14,y+24),fill=9,outline=1)
+            d.rectangle((25,y+14,31,y+16),fill=8)
+            d.rectangle((14,y+9,22,y+12),fill=3,outline=1)
+            d.line((18,y+9,18,y+6),fill=13)
+        else:              # paired forward-firing side mount
+            for yy in (11,20):
+                d.rectangle((6,y+yy,25,y+yy+4),fill=12,outline=1)
+                d.rectangle((23,y+yy+1,30,y+yy+2),fill=8)
+            d.rectangle((9,y+14,17,y+20),fill=9,outline=1)
     save('weapon_icons',icons,'sprite',height=32,bpp_mode='bpp_4')
+
+    # Mechanic shop grid: three permanent upgrades followed by every weapon
+    # that is not part of the player's starting loadout.
+    shop_icons=img((32,32*9),sprite=True)
+    for frame in range(9):
+        y=frame*32
+        if frame>=3:
+            weapon_frame=(2,7,8,3,4,6)[frame-3]
+            shop_icons.paste(icons.crop((0,weapon_frame*32,32,weapon_frame*32+32)),(0,y))
+            continue
+        d=ImageDraw.Draw(shop_icons)
+        d.rectangle((3,y+3,28,y+28),fill=2,outline=14)
+        d.line((5,y+5,26,y+5),fill=8);d.line((5,y+26,26,y+26),fill=1)
+        if frame==0:       # salvage magnet
+            d.arc((6,y+7,25,y+25),0,180,fill=12,width=4)
+            d.rectangle((6,y+15,10,y+24),fill=9);d.rectangle((21,y+15,25,y+24),fill=9)
+            for xx,yy in ((10,9),(21,8),(16,5)):d.rectangle((xx,y+yy,xx+2,y+yy+2),fill=8)
+        elif frame==1:     # tuned injector
+            d.rectangle((8,y+10,23,y+22),fill=3,outline=1)
+            d.rectangle((11,y+7,20,y+11),fill=12,outline=1)
+            d.line((11,y+15,20,y+15),fill=8,width=2)
+            d.polygon([(22,y+11),(29,y+16),(22,y+21)],fill=10,outline=1)
+        else:              # reinforced plating
+            d.polygon([(16,y+6),(26,y+10),(24,y+22),(16,y+27),(8,y+22),(6,y+10)],fill=12,outline=1)
+            d.polygon([(16,y+10),(22,y+12),(21,y+20),(16,y+23),(11,y+20),(10,y+12)],fill=3)
+            d.rectangle((14,y+13,18,y+20),fill=8)
+    save('shop_icons',shop_icons,'sprite',height=32,bpp_mode='bpp_4')
 
     # Five original 128x64 hero illustrations are split over two hardware
     # sprites. This lets the fitting bay spend pixels on a deliberately drawn
@@ -546,9 +593,9 @@ def sprites():
             garage_cars.paste(hero.crop((half*64,0,half*64+64,64)),(0,(body*2+half)*64))
     save('garage_car_preview',garage_cars,'sprite',height=64,bpp_mode='bpp_4')
 
-    garage_attachments=img((64,64*40),sprite=True)
+    garage_attachments=img((64,64*70),sprite=True)
     for body in range(5):
-        for attachment in range(4):
+        for attachment in range(7):
             layer=img((128,64),sprite=True);d=ImageDraw.Draw(layer)
             if attachment==0:       # articulated forward gun
                 d.rectangle((84,27,102,37),fill=3,outline=1)
@@ -566,14 +613,34 @@ def sprites():
                 for yy in (18,23):
                     d.polygon([(48,yy),(72,yy),(86,yy+3),(72,yy+6),(48,yy+6)],fill=12,outline=1)
                     d.rectangle((80,yy+2,87,yy+3),fill=10)
-            else:                   # armored rear trap magazine
+            elif attachment==3:     # armored rear trap magazine
                 d.rectangle((7,29,22,48),fill=3,outline=1)
                 for xx in (10,18):
                     for yy in (32,42):
                         d.rectangle((xx-4,yy-4,xx+4,yy+4),fill=14,outline=1)
                         d.rectangle((xx-2,yy-2,xx+2,yy+2),fill=10)
+            elif attachment==4:     # roof radio receiver and whip antenna
+                d.rectangle((49,19,78,27),fill=3,outline=1)
+                d.rectangle((54,20,72,24),fill=13,outline=14)
+                d.point((58,22),fill=10)
+                d.line((66,19,70,5),fill=12,width=2)
+                d.line((70,5,74,2),fill=12,width=1)
+                d.arc((70,1,81,12),175,285,fill=8,width=1)
+            elif attachment==5:     # long precision gun and scope
+                d.rectangle((81,27,103,37),fill=3,outline=1)
+                d.rectangle((88,25,98,40),fill=12,outline=1)
+                d.rectangle((98,29,127,32),fill=13,outline=1)
+                d.rectangle((102,25,114,28),fill=3,outline=1)
+                d.line((108,25,108,22),fill=12)
+                d.rectangle((122,30,127,31),fill=8)
+            else:                   # paired forward side guns
+                for yy in (23,39):
+                    d.rectangle((63,yy-3,94,yy+3),fill=12,outline=1)
+                    d.rectangle((91,yy-1,124,yy+1),fill=13)
+                    d.rectangle((119,yy,127,yy),fill=8)
+                d.rectangle((55,25,72,39),fill=3,outline=1)
             for half in range(2):
-                frame=body*8+attachment*2+half
+                frame=body*14+attachment*2+half
                 garage_attachments.paste(layer.crop((half*64,0,half*64+64,64)),(0,frame*64))
     save('garage_car_attachments',garage_attachments,'sprite',height=64,bpp_mode='bpp_4')
 
@@ -599,16 +666,13 @@ def sprites():
         d.rectangle((28,y+29,35,y+34),fill=14,outline=15)
         d.point((31,y+31),fill=8);d.point((32,y+31),fill=8)
     save('loadout_ring',loadout_ring,'sprite',height=64,bpp_mode='bpp_4')
-    salvage=img((16,48),sprite=True);d=ImageDraw.Draw(salvage)
+    salvage=img((16,32),sprite=True);d=ImageDraw.Draw(salvage)
     # Scrap: a compact pile of recoverable metal and circuitry.
     d.rectangle((2,7,13,12),fill=1);d.rectangle((3,5,8,10),fill=14,outline=3)
     d.rectangle((9,6,13,11),fill=12,outline=3);d.line((4,8,12,8),fill=7,width=1);d.point((6,6),fill=8)
-    # Blueprint: a glowing data wafer, distinct from currency and ammunition.
-    d.rectangle((3,19,12,29),fill=3,outline=1);d.rectangle((5,21,10,27),fill=11)
-    d.line((6,22,9,22),fill=15);d.line((6,24,9,24),fill=15);d.point((6,26),fill=8)
     # Energy cell: immediately consumed by the car rather than inventoried.
-    d.rectangle((4,35,11,45),fill=1,outline=15);d.rectangle((6,33,9,35),fill=15)
-    d.rectangle((6,37,9,43),fill=4);d.point((10,39),fill=8)
+    d.rectangle((4,19,11,29),fill=1,outline=15);d.rectangle((6,17,9,19),fill=15)
+    d.rectangle((6,21,9,27),fill=4);d.point((10,23),fill=8)
     save('salvage_pickup',salvage,'sprite',height=16,bpp_mode='bpp_4')
     hp=img((16,24),sprite=True); d=ImageDraw.Draw(hp)
     for frame in range(3):
@@ -630,6 +694,42 @@ def sprites():
     mission_dot=img((8,8),sprite=True);d=ImageDraw.Draw(mission_dot)
     d.rectangle((1,1,6,6),fill=8);d.rectangle((2,2,5,5),fill=12);d.rectangle((3,3,4,4),fill=10)
     save('mission_dot',mission_dot,'sprite')
+    radio_barrel=img((16,16),sprite=True);d=ImageDraw.Draw(radio_barrel)
+    d.ellipse((3,2,12,5),fill=14,outline=1)
+    d.rectangle((3,4,12,12),fill=9,outline=1)
+    d.ellipse((3,10,12,14),fill=9,outline=1)
+    d.line((4,6,11,6),fill=15);d.line((4,10,11,10),fill=15)
+    d.rectangle((6,5,9,11),fill=10);d.point((7,7),fill=8)
+    save('radio_barrel',radio_barrel,'sprite',height=16,bpp_mode='bpp_4')
+    radio_chevrons=img((32,32*24),sprite=True)
+    for strength in range(3):
+        for direction in range(8):
+            y=(strength*8+direction)*32;d=ImageDraw.Draw(radio_chevrons)
+            angle=direction*math.tau/8;ux=math.cos(angle);uy=math.sin(angle)
+            px=-uy;py=ux
+            for index in range(strength+1):
+                along=(index-strength/2)*6
+                cx=15.5+ux*along;cy=y+15.5+uy*along
+                tip=(round(cx+ux*4),round(cy+uy*4))
+                left=(round(cx-ux*3+px*4),round(cy-uy*3+py*4))
+                right=(round(cx-ux*3-px*4),round(cy-uy*3-py*4))
+                d.line((left,tip,right),fill=1,width=4,joint='curve')
+                d.line((left,tip,right),fill=8,width=2,joint='curve')
+    save('radio_chevrons',radio_chevrons,'sprite',height=32,bpp_mode='bpp_4')
+    settings_tab=img((8,8*8),sprite=True);d=ImageDraw.Draw(settings_tab)
+    for tab in range(4):
+        for active in range(2):
+            y=(tab*2+active)*8;color=8 if active else 12;dim=12 if active else 14
+            d.rectangle((0,y,7,y+7),outline=color)
+            if tab==0: # Map grid and position.
+                d.line((2,y+2,5,y+5),fill=dim);d.line((5,y+2,2,y+5),fill=dim);d.point((4,y+4),fill=color)
+            elif tab==1: # Car / driving tune.
+                d.rectangle((2,y+2,5,y+5),fill=dim);d.point((1,y+5),fill=color);d.point((6,y+5),fill=color)
+            elif tab==2: # Music note.
+                d.line((4,y+1,4,y+5),fill=color);d.line((4,y+1,6,y+2),fill=color);d.rectangle((2,y+5,4,y+6),fill=dim)
+            else: # Save cartridge.
+                d.rectangle((2,y+1,5,y+6),fill=dim,outline=color);d.rectangle((3,y+2,4,y+3),fill=1);d.point((4,y+5),fill=color)
+    save('settings_tab',settings_tab,'sprite',height=8,bpp_mode='bpp_4')
     race_gate=img((16,32),sprite=True);d=ImageDraw.Draw(race_gate)
     for frame in range(2):
         y=frame*16

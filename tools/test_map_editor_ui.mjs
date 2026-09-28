@@ -2,7 +2,7 @@
 import {JSDOM} from '../build/map-editor-ui/node_modules/jsdom/lib/api.js';
 import {readFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import {compile,makeNode,presets,LUT_MAX_POINTS,defaultLutColor,normalizeSpawnProfiles} from './map_editor/recipe.mjs';
+import {compile,makeNode,presets,MAX_NODES,LUT_MAX_POINTS,defaultLutColor,normalizeSpawnProfiles,normalizePlacements} from './map_editor/recipe.mjs';
 const read = path => readFile(new URL('../'+path,import.meta.url),'utf8');
 const art=JSON.parse(await read('tools/map_editor/generated/art.json'));
 const schema=JSON.parse(await read('tools/map_editor/schema.json'));
@@ -12,7 +12,7 @@ const dom=new JSDOM(await read('tools/map_editor/index.html'),{url:'http://local
 const w=dom.window;
 // jsdom has no native PointerEvent handler properties; bridge to its event dispatcher.
 Object.defineProperty(w.HTMLElement.prototype,'onpointerdown',{set(fn){if(this._pointerDown)this.removeEventListener('pointerdown',this._pointerDown);this._pointerDown=fn;this.addEventListener('pointerdown',fn);},get(){return this._pointerDown;}});
-Object.assign(w,{structuredClone,compile,makeNode,presets,LUT_MAX_POINTS,defaultLutColor,normalizeSpawnProfiles,Worker:class {constructor(){w.testWorker=this;}postMessage(data){w.lastProgram=data;}},fetch:async(url,options={})=>{
+Object.assign(w,{structuredClone,compile,makeNode,presets,MAX_NODES,LUT_MAX_POINTS,defaultLutColor,normalizeSpawnProfiles,normalizePlacements,Worker:class {constructor(){w.testWorker=this;}postMessage(data){w.lastProgram=data;}},fetch:async(url,options={})=>{
   const path=String(url);
   if(path.includes('schema'))return {ok:true,status:200,json:async()=>structuredClone(schema)};
   if(path.includes('art.json'))return {ok:true,status:200,json:async()=>structuredClone(art)};
@@ -30,7 +30,7 @@ w.HTMLAnchorElement.prototype.click=function(){};
 w.Blob=Blob;w.URL.createObjectURL=blob=>{w.lastBlob=blob;return 'blob:test';};w.URL.revokeObjectURL=()=>{};
 w.confirm=()=>true;w.prompt=(_message,value)=>value;
 w.document.addEventListener('click',e=>{if(e.target.tagName==='A')e.preventDefault();});
-w.HTMLCanvasElement.prototype.getContext=()=>({fillRect(){},drawImage(){},fillText(){},strokeRect(){},beginPath(){},arc(){},fill(){},stroke(){},putImageData(){},createImageData:(width,height)=>({data:new Uint8ClampedArray(width*height*4)})});
+w.HTMLCanvasElement.prototype.getContext=()=>({fillRect(){},drawImage(){},fillText(){},strokeRect(){},beginPath(){},moveTo(){},lineTo(){},arc(){},fill(){},stroke(){},save(){},restore(){},putImageData(){},createImageData:(width,height)=>({data:new Uint8ClampedArray(width*height*4)})});
 await w.eval('(async()=>{'+(await read('tools/map_editor/app.mjs')).replace(/^import .*;\r?\n/,'')+'})()');
 const $=id=>w.document.getElementById(id);
 const node=id=>JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).nodes.find(n=>n.id===id);
@@ -47,10 +47,12 @@ w.testWorker.onmessage({data:{ready:true}});
 Object.defineProperties($('graph'),{clientWidth:{configurable:true,value:600},clientHeight:{configurable:true,value:400}});$('graph').getBoundingClientRect=()=>({left:10,top:20,width:600,height:400,right:610,bottom:420});
 $('graph').dispatchEvent(new w.WheelEvent('wheel',{deltaY:-100,clientX:310,clientY:220,bubbles:true,cancelable:true}));assert.equal($('zoom-label').textContent,'110%');let transform=$('graph-plane').style.transform.match(/translate\(([-+\de.]+)px, ([-+\de.]+)px\) scale\(([-+\de.]+)\)/);assert.ok(Math.abs(Number(transform[1])+30)<.001&&Math.abs(Number(transform[2])+20)<.001&&Math.abs(Number(transform[3])-1.1)<.001);
 $('graph').dispatchEvent(new w.MouseEvent('pointerdown',{button:0,clientX:100,clientY:100,bubbles:true}));w.dispatchEvent(new w.MouseEvent('pointermove',{clientX:130,clientY:145,bubbles:true}));transform=$('graph-plane').style.transform.match(/translate\(([-+\de.]+)px, ([-+\de.]+)px\)/);assert.ok(Math.abs(Number(transform[1]))<.001&&Math.abs(Number(transform[2])-25)<.001);w.dispatchEvent(new w.MouseEvent('pointerup',{clientX:130,clientY:145,bubbles:true}));assert.equal($('graph').classList.contains('panning'),false);
+$('view').value='final';$('view').dispatchEvent(new w.Event('change'));$('layer').value='textures';$('layer').dispatchEvent(new w.Event('change'));
 $('preset').value='natural-ground';$('preset').dispatchEvent(new w.Event('change'));await wait();
 let recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));
-assert.equal(recipe.version,2);assert.equal(recipe.materialOutput,6);assert.equal(recipe.output,3);
-assert.equal(w.lastProgram.textures,true);assert.equal(w.lastProgram.materialProgram.at(-1)[0],14);
+assert.equal(recipe.version,6);assert.equal(recipe.materialOutput,6);assert.equal(recipe.output,3);
+assert.equal(w.lastProgram.schematic,true);assert.equal(w.lastProgram.materialProgram.at(-1)[0],14);
+$('view').value='final';$('view').dispatchEvent(new w.Event('change'));await wait();assert.equal(w.lastProgram.textures,true);
 click($('art-bank'));assert.equal($('material-bindings').children.length,4);assert.equal($('decoration-bindings').children.length,4);assert.equal($('world-bindings').children.length,2);
 edit('Material slot 2 ID',7);assert.equal(JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).artProfile.materials[1].id,7);
 edit('Material slot 2 ID',1);click($('close-art'));
@@ -79,8 +81,8 @@ select(6);await wait();
 w.testWorker.onmessage({data:{id:w.lastProgram.id,ms:1,outputs:[{meta:new Uint32Array([0,3,2,0,123,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]),cells:new Uint8Array(4096).fill(255),seed:42,unknown:[255]}]}});
 assert.match($('notice').textContent,/Unassigned material IDs: 255/);assert.match($('legend').textContent,/Sand.*Gravel/);
 // Deleting the material root restores the explicit legacy fallback and undo restores both roots.
-click($('delete'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,1);assert.equal(recipe.materialOutput,undefined);
-click($('undo'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,2);assert.equal(recipe.materialOutput,6);
+click($('delete'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,6);assert.equal(recipe.materialOutput,undefined);
+click($('undo'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,6);assert.equal(recipe.materialOutput,6);
 // Changing outputs never replaces the wall/floor root with a material root.
 select(6);click($('set-output'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.output,3);assert.equal(recipe.materialOutput,6);
 console.log('PASS material editor DOM: independent roots, pinned edits, JSON roundtrip, full-render request/zoom, warnings/legend, deletion/undo.');
@@ -105,8 +107,8 @@ assert.equal(w.document.querySelector('[aria-label="Maximum width (pixels)"]'),n
 console.log('PASS road editor DOM: preset, width/material edits, output switching, full render and JSON export.');
 $('preset').value='populated-wasteland';$('preset').dispatchEvent(new w.Event('change'));await wait();
 recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));
-assert.equal(recipe.version,3);assert.equal(w.lastProgram.spawnProgram.at(-1)[0],17);assert.equal(w.lastProgram.decorationProgram.at(-1)[0],18);
-click($('population-bank'));assert.equal($('population-bindings').children.length,1);click($('add-population'));assert.equal($('population-bindings').children.length,2);click($('close-population'));
+assert.equal(recipe.version,6);assert.equal(w.lastProgram.spawnProgram.at(-1)[0],17);assert.equal(w.lastProgram.decorationProgram.at(-1)[0],18);
+click($('population-bank'));assert.equal($('population-bindings').children.length,1);click($('add-population'));assert.equal($('population-bindings').children.length,2);assert.equal(JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).version,6);click($('close-population'));
 select(recipe.spawnOutput);edit('Target count',24);await wait();
 assert.equal(w.lastProgram.program.at(-1)[0],16);assert.equal(w.lastProgram.spawnProgram.at(-1)[5],24);
 click($('pin-settings'));select(recipe.output);edit('Minimum spacing (pixels)',384);await wait();
@@ -119,6 +121,15 @@ click($('set-output'));assert.equal(JSON.parse(w.localStorage.getItem('dustline.
 click($('delete'));await wait();assert.equal(JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).decorationOutput,undefined);
 click($('undo'));await wait();assert.equal(w.lastProgram.decorationProgram.at(-1)[5],80);
 console.log('PASS placement editor DOM: independent outputs, pinned spawn controls, density/type weights, marker toggle, export and deletion/undo.');
+$('preset').value='wasteland';$('preset').dispatchEvent(new w.Event('change'));await wait();$('view').value='placements';$('view').dispatchEvent(new w.Event('change'));await wait();assert.equal(w.lastProgram.schematic,true);assert.equal(w.lastProgram.portals.length,2);assert.equal(w.lastProgram.playerSpawns.length,3);assert.equal($('placement-list').children.length,5);assert.ok(w.document.querySelector('[aria-label="Portal X"]'));assert.ok(w.document.querySelector('.preview-panel').classList.contains('placement-mode'));edit('Portal X',4096);click($('undo'));await wait();$('view').value='final';$('view').dispatchEvent(new w.Event('change'));await wait();assert.ok(!w.document.querySelector('.preview-panel').classList.contains('placement-mode'));$('view').value='placements';$('view').dispatchEvent(new w.Event('change'));await wait();
+console.log('PASS authored placement DOM: schematic request, separate Portal/Player Spawn lists, exact coordinate editing and undo.');
+const worldMaps=mapLibrary.maps.filter(entry=>entry.includeInGame),worldConnections=mapLibrary.world.connections.length;
+click($('world-map'));assert.ok($('world-dialog').open);assert.equal(w.document.querySelectorAll('.world-node').length,worldMaps.length);assert.equal(w.document.querySelectorAll('.world-gate.portal').length,worldMaps.reduce((n,entry)=>n+entry.recipe.portals.length,0));assert.equal(w.document.querySelectorAll('.world-gate.spawn').length,worldMaps.reduce((n,entry)=>n+entry.recipe.playerSpawns.length,0));assert.equal(w.document.querySelectorAll('.world-link').length,worldConnections);assert.match(w.document.querySelector('.world-gate.spawn').textContent,/@ \d+,\d+/);assert.match(w.document.querySelector('.world-link span').textContent,/@ \d+,\d+/);
+click(w.document.querySelector('.world-link button'));assert.equal(w.document.querySelectorAll('.world-link').length,worldConnections-1);assert.equal($('save-world').disabled,false);assert.match($('world-status').textContent,/1 unconnected Portal/);
+click($('save-world'));await wait();assert.equal(mapLibrary.world.connections.length,worldConnections-1);assert.match($('world-status').textContent,/saved/);click($('close-world'));
+$('preset').value='two-rules-radial';$('preset').dispatchEvent(new w.Event('change'));await wait();$('include-in-game').checked=false;$('include-in-game').dispatchEvent(new w.Event('change'));click($('save-map'));await wait();
+assert.equal(mapLibrary.maps.find(entry=>entry.id==='two-rules-radial').includeInGame,false);assert.ok(!mapLibrary.world.nodes.some(node=>node.map==='two-rules-radial'));assert.ok(mapLibrary.world.connections.every(link=>link.from.map!=='two-rules-radial'&&link.to.map!=='two-rules-radial'));
+console.log('PASS world-map DOM: partial directed routes, disabled-map pruning and atomic library save.');
 const initialMaps=mapLibrary.maps.length;
 click($('new-map'));assert.equal(JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).nodes.length,0);assert.equal($('include-in-game').checked,false);
 click($('save-map'));await wait();assert.equal(mapLibrary.maps.length,initialMaps+1);assert.match($('preset').value,/untitled-map/);

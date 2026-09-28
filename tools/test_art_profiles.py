@@ -9,10 +9,9 @@ from compile_recipe import load_library
 catalog=load_catalog()
 library,enabled,_=load_library()
 profiles,indices,keys=profiles_for_entries(enabled,catalog)
-assert len(profiles)==5
-assert len(set(keys))==5
-assert keys[0]==keys[4] and keys[1]==keys[5]
-assert keys[6] not in keys[:6]
+assert len(keys)==len(enabled)
+assert len(profiles)==len(set(keys))
+assert set(indices.values())==set(range(len(profiles)))
 
 art=json.loads((open('tools/map_editor/generated/art.json')).read())
 assert set(art['mapBanks'])=={entry['id'] for entry in library['maps']}

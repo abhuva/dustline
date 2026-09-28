@@ -9,13 +9,19 @@ constexpr int enemy_count=5, bullet_count=24, enemy_hp=3, player_max_hp=100,play
 constexpr int spawn_range=560, despawn_range=800, spawn_cooldown=1800;
 constexpr int player_range=120, enemy_range=480, player_interval=10, enemy_interval=player_interval;
 constexpr int shield_recharge_delay=180,shield_recharge_interval=15,revive_invulnerability=120;
-enum class Weapon { gun, chainsaw, sides, missile, trap, count };
+// Keep the persisted IDs stable: empty was historically encoded as 5, so new
+// equipment must be appended after it rather than reusing that value.
+enum class Weapon {
+    gun=0, chainsaw=1, sides=2, missile=3, trap=4, empty=5, radio=6,
+    sniper=7, front_shooter=8, count=9
+};
 enum class MountSlot { front, side, special, count };
 constexpr int weapon_count=int(Weapon::count), missile_count=2, trap_count=6;
 constexpr int mount_slot_count=int(MountSlot::count);
 constexpr int pickup_count=10;
-constexpr int saw_radius=10, saw_damage=2, missile_damage=3, trap_damage=3;
-constexpr int weapon_energy_costs[weapon_count]={0,1,2,8,6};
+constexpr int saw_radius=10,saw_damage=2,missile_damage=3,trap_damage=3,sniper_damage=4;
+constexpr int sniper_range=520,sniper_interval=75,front_shooter_interval=18;
+constexpr int weapon_energy_costs[weapon_count]={0,1,2,8,6,0,0,5,3};
 const char* weapon_name(Weapon weapon);
 struct Enemy {
     driving::Car car;
@@ -29,9 +35,9 @@ struct Enemy {
 };
 struct Bullet {
     bn::fixed x=0,y=0,vx=0,vy=0;
-    int remaining=0;
+    int remaining=0,damage=1;
+    Weapon source=Weapon::gun;
     bool hostile=false;
-    bool side=false;
 };
 struct Missile {
     bn::fixed x=0,y=0,vx=0,vy=0,heading=0;
@@ -44,7 +50,7 @@ struct Trap {
 struct Pickup {
     bn::fixed x=0,y=0;
     int remaining=0;
-    uint8_t kind=0,value=0; // 0 scrap amount, 1 blueprint ID, 2 energy.
+    uint8_t kind=0,value=0; // 0 scrap amount, 1 energy amount.
 };
 class World {
 public:
@@ -72,7 +78,6 @@ public:
     bool fired=false,impact=false,destroyed=false,player_destroyed=false;
     int collected_scrap=0;
     int collected_energy=0;
-    uint8_t collected_blueprints=0;
     void reset(const driving::Car& player,bool enabled,cave_layout::progress_fn progress=nullptr);
     BN_CODE_IWRAM void step(driving::Car& player,bool normal_fire,bool special_fire);
     void clear_bullets();
@@ -87,7 +92,9 @@ public:
     int weapon_mask() const { return _weapon_mask; }
     Weapon fitted_weapon(MountSlot slot) const { return _fitted[int(slot)]; }
     bool weapon_enabled(Weapon candidate) const {
-        return candidate!=Weapon::count && (_weapon_mask&(1<<int(candidate)));
+        if(candidate==Weapon::empty || candidate==Weapon::radio)return false;
+        for(Weapon fitted:_fitted)if(fitted==candidate)return true;
+        return false;
     }
     bool has_weapons() const { return _weapon_mask!=0; }
     int max_player_hp() const { return _player_max_hp; }
@@ -96,7 +103,7 @@ public:
 private:
     bool _enabled=false;
     int _weapon_mask=0;
-    bn::array<Weapon,mount_slot_count> _fitted={Weapon::gun,Weapon::sides,Weapon::missile};
+    bn::array<Weapon,mount_slot_count> _fitted={Weapon::gun,Weapon::empty,Weapon::empty};
     bool _salvage_magnet=false;
     int _player_max_hp=player_max_hp;
     int _player_max_energy=player_max_energy;
@@ -106,7 +113,8 @@ private:
     bn::array<int,enemy_count*(enemy_count+1)/2> _contact_cooldowns{};
     void stream(const driving::Car& player,bool initial=false);
     BN_CODE_IWRAM void think(Enemy& enemy,const driving::Car& player);
-    bool shoot(const driving::Car& car,bool hostile,int angle=0,bool side=false);
+    bool shoot(const driving::Car& car,bool hostile,Weapon source=Weapon::gun,int angle=0,
+               int lateral=0,int range=player_range,int speed=6,int damage=1);
     void fire_weapon(const driving::Car& player,Weapon candidate);
     void update_specials(const driving::Car& player);
     void damage(Enemy& enemy,int amount,Weapon source);

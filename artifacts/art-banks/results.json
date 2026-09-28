@@ -5,7 +5,7 @@
     "seed": 12648431,
     "capacity": 192,
     "unique": 180,
-    "pixels": "bbf1209a30043b6e7f199bcb7bf0de17edffd888ebe6cd73b94398d4985f1038"
+    "pixels": "5fa7f8071d88ce13a20c9f6bf4a6566963ca2ec345869f7ce396286ef2c96c42"
   },
   {
     "index": 1,
@@ -13,30 +13,14 @@
     "seed": 12648430,
     "capacity": 192,
     "unique": 180,
-    "pixels": "cd97a1e35890e6f54f64dbd1ca687c1caa029943b3d268205cc092f51a67588c"
+    "pixels": "208636fd7bca3ecba01987b20d98a926cc9672e35e11420d8cf5a83c3f96d2e9"
   },
   {
     "index": 2,
-    "map": "plasma-basin",
-    "seed": 12648430,
-    "capacity": 192,
-    "unique": 180,
-    "pixels": "2f086a6ae66e813d485064d8147aba69557bede529cd98ee9f75667878e0b697"
-  },
-  {
-    "index": 3,
-    "map": "voronoi-passages",
-    "seed": 12648438,
-    "capacity": 192,
-    "unique": 180,
-    "pixels": "621b24048a6e530f6a7425e9e7c1f76bdd524c8673519dcd731e6f1770626922"
-  },
-  {
-    "index": 6,
     "map": "twin-cities",
     "seed": 12648430,
     "capacity": 192,
     "unique": 167,
-    "pixels": "1ac366a88c8cff2dfa3a577ac89c79925f4e734d01766bf5c3ba28017a8b460f"
+    "pixels": "f084bead88563c57fd5ee9168b408ae4e96474e3a737e4920b305a7aa3c22c1b"
   }
 ]

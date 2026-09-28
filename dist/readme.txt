@@ -8,20 +8,24 @@ Open dist/dustline.gba in RetroArch using the Nintendo - Game Boy Advance
 may not recognize an original homebrew game. No base game or ROM patch is
 needed. A separate GBA BIOS is optional with mGBA.
 
-Choose a map with Left/Right, then press A. Every title entry comes from
-maps/map-library.json and has a saved seed. The ROM currently includes seven
-8192 x 8192 procedural maps. There is no runtime random-map choice. Recipes can
+Choose START NEW GAME and press A to begin at the authored world start with a
+fresh car, inventory and progression state. CONTINUE GAME appears only when a
+valid cartridge save exists and restores that save's region and position. The
+ROM currently includes the three enabled 8192 x 8192 procedural regions;
+disabled catalog drafts are not compiled and regions are reached through Portals.
+There is no runtime random-map choice. Recipes can
 use cellular automata, masks, smoothing and largest-component flood fill so
 disconnected floor is filled and all six outposts are reachable.
 The loading screen shows aggregate progress through the selected map's world,
 material, spawn and decoration node graphs, followed by encounter and scene setup.
-Select opens the paused vehicle lab without resetting the car. L/R switches
-between handling/body selection and audio control. While driving, R fires the
+Select opens a paused four-page field menu without resetting the car. Its first
+page is a complete 128 x 128 region map with gold towns, green Portals, the red player and the active
+objective; the remaining pages contain driving setup, audio and save data. While driving, R fires the
 fitted front and side weapons together and L fires the fitted top special.
 Weapon fitting is changed only at a garage; there is no loadout switching while driving.
 Start pauses and shows the active contract, reward, completed-job count and
 session credits.
-Music starts at 0% volume and can be enabled from the vehicle lab's AUDIO
+Music starts at 0% volume and can be enabled from the field menu's MUSIC
 CONTROL panel. It is an original eight-channel generated tracker module and moves among
 CRUISE, FAST DRIVE, ENEMY NEARBY and COMBAT arrangements at two-bar boundaries.
 Escalation is armed immediately; de-escalation waits three seconds to avoid rapid
@@ -36,7 +40,10 @@ Yes unloads the overworld graphics and opens a walkable, lively wasteland town.
 Follow the central street to the signed GARAGE at the north edge. Enter its
 approach area and press A when the circled A prompt appears. Inside, enter the
 rectangular area along the mechanic counter and press A when its prompt appears
-to fit a vehicle setup or use the fabricator. The parked car on the left is
+to fit a vehicle setup or open the parts shop. The shop is a 3 x 3 icon grid:
+use the D-pad to select an item, A to buy it for gold plus scrap, R for details,
+and B to return to setup. Bought upgrades activate immediately and bought weapons
+become available at the parked car. The parked car on the left is
 solid; stand in the marked area immediately to its right and press A to enter the
 separate WEAPON FITTING screen. Its larger vehicle preview shows the fitted
 attachments. Left/Right chooses FRONT, SIDE or TOP, A opens that mount's
@@ -49,7 +56,26 @@ exact saved coordinates, stopped and facing 180 degrees away from the outpost, o
 before its prompt can reopen.
 The settlement marker remains visible above the bottom-aligned entry question.
 All six outposts currently share this first town and garage layout. There are no
-additional interiors, dialogue trees or persistent saves yet.
+additional interiors or dialogue trees yet.
+
+CONNECTED REGIONS
+-----------------
+The enabled procedural regions form an authored world graph. Portal trigger
+rectangles are independent of arrival spawn points. Driving into a connected one stops the car
+and asks whether to travel to the connected region. No is selected initially;
+use any D-pad direction to choose Yes, A to confirm, or B to decline. Declining
+suppresses that Portal only until the car leaves its rectangle, so returning asks
+again immediately. Each Portal has one directed destination. A return trip uses
+a separate Portal transition.
+
+Arrival uses the exact separately authored Player Spawn ID, position and heading
+selected by that directed world-graph connection. Keep that point on safe floor
+outside the destination trigger and face it away from the trigger if an immediate
+return should be possible. Health, shield, battery energy, fitted weapons, tuning,
+inventory, credits and an active contract travel with the player. The destination
+region's terrain is regenerated from its fixed recipe and its enemies, pickups,
+projectiles and other local simulation start fresh; regions do not retain local
+world state yet.
 
 CONTRACTS
 ---------
@@ -58,20 +84,22 @@ area and press A when the circled A prompt appears; facing direction does not ma
 Left/Right to choose COURIER or HUNT, A to accept, and B to close the board. Only
 one contract can be active at a time.
 
-Courier contracts choose a deterministic destination different from the current
-outpost. Enter that outpost to complete the delivery. Hunt contracts mark one
-specific living encounter anchor; destroy that raider to complete the job. A
+Courier contracts choose a deterministic outpost in another reachable region.
+Enter that outpost to complete the delivery. Hunt contracts choose one specific
+encounter anchor in another reachable region; destroy that enemy to complete the job. A
 white/gold/red marker on the minimap shows the target or clamps to its edge to
-give a direction when the target is farther away. Contract rewards become
+give a direction when the target is farther away. Outside the objective region
+it instead points to the next Portal on the shortest directed route. Contract
+rewards scale with the number of region hops and become
 session credits immediately on completion. Return to any dispatch board and
 press A on the completion notice to request another job.
 
 Offers derive from the selected map seed, origin outpost and contract serial, so
 the same run state produces the same offer. Contract state survives town visits,
-pausing, settings and revival. Starting another map or returning to the title
-clears the active contract, completed-job count, credits, scrap and blueprints. There is no abort
-option, passenger simulation, escort AI or cartridge persistence
-yet.
+pausing, settings and revival. START NEW GAME clears the active in-memory run;
+returning to the title leaves the cartridge save available for CONTINUE GAME.
+There is no contract-abort option, passenger simulation or escort
+AI yet.
 
 RACES
 -----
@@ -115,15 +143,23 @@ respawn interval and loot table. The Wasteland example bands northern scouts,
 central raiders and southern heavies. A visible anchor waits until it is
 off-screen. Despawned survivors retain their remaining HP, but restart at their
 anchor when reactivated. Anchors cannot produce duplicates while their car lives.
-Each car has three fixed garage mounts: FRONT accepts the gun, SIDE accepts the
-paired side guns, and TOP accepts a homing missile or trap. Every slot can also
+Each car has three fixed garage mounts: FRONT accepts the standard gun or long-range
+sniper, SIDE accepts the paired broadside guns or twin forward shooter, and TOP
+accepts a homing missile, trap or passive radio-signal receiver. Every slot can also
 be left EMPTY. Hold R to fire the fitted front and side mounts together; weapons
 do not wait for an AI range decision. L independently operates the fitted TOP
-special. The default fitting is gun + side guns + missile. There is no weapon
+special. The radio uses no energy and makes L a no-op; while fitted, it shows one,
+two or three world-relative chevrons near the car pointing toward the nearest
+active signal in range. A new game owns and fits only the standard front gun; all
+other equipment must be bought at the garage shop before it appears in fitting. There is no weapon
 switching or weapon icon during map play, and no full-width driving status bar.
 The default forward gun fires about six shots per second with 120px muzzle
 travel; side guns fire both +/-90-degree directions every 16 driving frames.
 Each bullet removes one of the enemy's three HP pips.
+The long-range sniper travels 520px, deals four HP and costs 5 energy. Its
+75-frame cooldown makes it a deliberate single shot rather than a rapid-fire gun.
+The SIDE-slot forward shooter emits two parallel forward bullets every 18 frames,
+costing 3 energy per volley.
 The chainsaw is reserved for a later dedicated system. It cannot be fitted or
 activated through the current three-slot garage and driving controls.
 Homing missiles launch 18px ahead at 1.25px/frame, coast for eight ticks, then
@@ -135,14 +171,23 @@ Traps drop 22px behind, arm after 18 ticks, and stay stationary for up to 900
 ticks. Enemy contact detonates a 32px-radius, three-HP blast. The owner's car
 does not trigger it. Six traps maximum; one drop per 45 ticks. A full pool
 refuses another drop. Traps flash when armed and show a blast when triggered.
+Each enabled procedural region maintains three to five randomly placed radio
+discoveries during a run. The passive receiver automatically tracks the nearest
+one within its hard 1024px range; it uses no energy and requires no held button.
+Salvage barrels remain visible at close range even without a receiver. One player
+bullet destroys a barrel and immediately awards 12 scrap, then schedules a new
+random barrel after roughly three to five minutes of driving. Map travel retains
+that run's pools and cooldowns to prevent portal refills. Normal save/load starts
+fresh activity pools while preserving the fitted receiver; emulator save states
+preserve the exact live pools and timers.
 Weapons respect walls/buildings and each weapon retains its own cooldown.
 Deployed attacks keep working. Pause and settings freeze all simulation. Town
 entry clears deployed attacks while preserving the fitted mounts and encounter
-damage. A new run starts with the default fitting and empty attack pools.
+damage. A new run starts with only the standard gun and empty attack pools.
 The standard battery starts with 100 energy, shown by the amber segmented arc
 along the bottom third of the minimap. It empties symmetrically from both ends
-toward its bottom centre. The gun is free; side guns cost 2 per volley, missiles
-cost 8 and traps cost 6. Driving
+toward its bottom centre. The gun is free; broadside guns cost 2 per volley, the
+forward shooter costs 3, the sniper costs 5, missiles cost 8 and traps cost 6. Driving
 and the basic gun always remain available at zero energy.
 The player starts with 100 health and a 20-point rechargeable shield. Enemy
 bullets deal one point, consuming shield before health. After three seconds
@@ -164,9 +209,9 @@ Terrain driving still uses the established forgiving circular footprint. This
 is arcade contact response, not a full chassis/inertia/angular-impact model.
 Bullets cannot pass through walls/buildings.
 Enemy fire ignores other enemies. Destroyed cars can independently leave physical
-scrap, blueprint data or energy-cell pickups according to their authored regional
-profile. Pickups pull toward the car at close range; the fabricated
-salvage magnet doubles that range. Duplicate blueprints convert to three scrap.
+scrap or energy-cell pickups according to their authored regional profile.
+Pickups pull toward the car at close range; the purchased salvage magnet doubles
+that range.
 Weapons use no ammunition; powered weapons and shield recharge draw from energy.
 
 Enemies detect/pursue within 480px (two screen widths). Their gun now matches
@@ -203,8 +248,14 @@ simplified image. Small red dots track living active enemies every frame; dots
 outside the circle, destroyed enemies and inactive spawn points are hidden.
 During a race only the current checkpoint appears on the minimap.
 
-Select opens the paused vehicle lab. L/R switches between its HANDLING and AUDIO
-CONTROL panels. In HANDLING, Up/Down chooses ACC, SPEED, GRIP,
+Select opens the paused field menu. L/R cycles its MAP, DRIVE, MUSIC and
+SAVE pages; the highlighted square in the left icon rail shows the active page.
+MAP displays the complete 128 x 128 region, all towns, the live player position
+and the active race checkpoint or contract destination when one exists. It opens
+on CURRENT POSITION; Left/Right cycles the player, every named town and every
+Portal. The selected location receives a large bright marker and its name is
+shown along the bottom. Connected Portals read ROAD TO followed by their destination.
+In DRIVE, Up/Down chooses ACC, SPEED, GRIP,
 STEER, COAST, BRAKE, MASS, BAT or CAR. COAST is the base per-frame slowdown while
 neither A nor B is held; BRAKE is the forward-speed reduction applied by B.
 The existing terrain resistance is added on top, so loose ground still scrubs
@@ -215,38 +266,47 @@ controls physics. BAT selects COMPACT (70 energy, -100 kg), STANDARD (100 energy
 no mass change) or LARGE (150 energy, +200 kg); changing capacity never grants
 free energy and reducing it clamps the stored charge. On the other rows,
 Left/Right changes the value and A restores the fitted garage preset. Weapon
-fitting is deliberately absent here and belongs to the town garage. In AUDIO
-CONTROL, Up/Down chooses music volume, sound-effect volume or master mute.
+fitting is deliberately absent here and belongs to the town garage. In MUSIC,
+Up/Down chooses music volume, sound-effect volume or master mute.
 Left/Right changes either volume in 10% steps; A restores a volume to 100% or
-toggles mute. B, Select or Start returns. Body, tuning, fitted weapons and audio choices
-persist across pause, map and town scene changes for the session. Available handling ranges are deliberately wide:
+toggles mute. SAVE DATA provides SAVE GAME, LOAD GAME and ERASE SAVE; erase
+requires a second A press. Loading always returns to the overworld, including
+when the save was made from town. A successful load briefly names the restored
+map and says whether the exact saved position was used. Recipe/world-graph edits
+do not discard that position: if it is still driveable it is restored exactly;
+if changed collision covers it, the nearest safe floor is used and reported as
+POSITION MOVED. B, Select or Start returns. Body, tuning,
+fitted weapons and audio choices persist across pause, map and town scene changes
+for the session and are included in a manual save. Available handling ranges are deliberately wide:
 acceleration 0.000-0.500, speed 0.25-12.00, grip 0.000-1.000, steering 0.00-12.00,
 coast drag 0.000-0.050, brake force 0.00-0.30 and mass 100-10000 kg.
 
 CONTROLS (GBA BUTTONS, AS MAPPED IN YOUR EMULATOR)
 ------------------------------------------------
-Title Left/Right Select the previous / next map
-Title A          Start the selected map
+Title Up/Down    Choose Start New Game or Continue Game (with a valid save)
+Title A          Confirm the highlighted option
 A               Accelerate
 B               Brake; keep holding to reverse once stopped
 Up / Down       No driving function
 Left / Right    Steer relative to the car (steering reverses while backing up)
 Town D-pad      Walk in four directions
 Town A          Use any circled-A proximity area; facing does not matter
-Garage Up/Down Switch mechanic setup/fabricator pages
-Garage Left/Right Choose a setup or blueprint
+Garage Up/Down Switch mechanic setup/shop pages
+Shop D-pad      Select one of nine upgrades or weapons
+Shop A / B      Buy highlighted item / return to setup
+Shop R          Show highlighted item details
 Fitting Left/Right Choose the FRONT, SIDE or TOP mount
 Fitting D-pad   Choose a compatible weapon after opening a mount
 Fitting A / B   Open or fit / cancel or close the fitting screen
 Fitting R       Show data for the highlighted fitted or inventory weapon
 R in wasteland  Fire the fitted FRONT and SIDE mounts together
 L in wasteland  Fire the fitted TOP special weapon
-Select          Open vehicle lab while driving or in town (pauses driving)
-L / R           In vehicle lab: switch Handling / Audio panel
-Up / Down       In vehicle lab: choose a property, BAT, CAR or audio row
-Left / Right    Edit handling/car or set Music/Sound FX volume and master mute
-A               Restore handling/audio volume or toggle mute
-B/Select/Start  In vehicle lab: apply and return
+Select          Open field menu while driving or in town (pauses driving)
+L / R           In field menu: cycle Map / Drive / Music / Save page
+Up / Down       In Drive/Music/Save: choose a property or action row
+Left / Right    In Map: cycle locations; elsewhere edit the selected value
+A               Restore/edit the selected row or perform the selected save action
+B/Select/Start  In field menu: apply and return
 Start           Pause / controls screen; press again to resume
 Pause B         Abort an active race (wild races return to their race office)
 Select in pause Return to map selection
@@ -255,17 +315,17 @@ Reverse uses B, after the car has stopped.
 
 PROGRESSION
 -----------
-Each town Garage fits setups and prints upgrades from session credits plus scrap.
-The mechanic supplies the basic SALVAGE MAGNET plan. TUNED INJECTOR plans can
-drop from authored enemy populations, while completed hunt contracts unlock
-REINFORCED PLATING. Printing permanently installs that upgrade for the current
-map session. Closing the game or starting a new map clears these resources.
+Each town Garage sells nine items directly for session gold plus scrap: SALVAGE
+MAGNET, TUNED INJECTOR, REINFORCED PLATING, TWIN SIDE GUNS, LONG SNIPER, FRONT
+SHOOTER, SEEKER MISSILE, REAR TRAP and SIGNAL RADIO. A purchase unlocks the item
+immediately; there are no blueprints or 3D-printing step. Ownership, resources,
+fitted gear and installed upgrades are included in normal saves. Starting a new
+game clears purchases and returns to the standard front gun.
 Authored enemy populations can also drop energy cells, letting a successful fight
 extend an expedition. Outposts restore the battery, while the free gun and driving
 prevent an empty-energy dead end.
-Front and side weapons fire as a group, with the fitted top mount on B
-slot. Equipment remains independently installable in the vehicle lab; there are
-no buying/selling transactions for weapons yet. A future fire-control upgrade
+Front and side weapons fire as a group, with the fitted top mount on L.
+Equipment remains independently installable in the garage fitting screen. A future fire-control upgrade
 could suppress wasteful out-of-range shots, but the baseline deliberately fires
 without target-selection AI or its per-frame decision cost.
 
@@ -276,26 +336,37 @@ apply throttle again as you come out. You retain momentum while coasting.
 There is no tap-frequency bonus: deliberate throttle timing is the goal.
 The car has separate heading and velocity, so its nose can point slightly
 away from its direction of travel. Watch the skid marks during a fast turn.
-To restart a run, press Start, then Select, and choose a map again. Its saved
-seed reproduces the same layout; there is no driving-position reset key.
+To restart a run, press Start, then Select to return to the title and choose
+START NEW GAME. Its saved seed reproduces the same layout; there is no
+driving-position reset key.
 
 Enter a wasteland town, walk into the garage and speak to the mechanic to compare:
   GRIP   - 950kg; forgiving cornering grip, moderate power.
   RALLY  - 1100kg; default, more power and speed, looser cornering.
   HEAVY  - 2200kg; slower acceleration/steering, greater resistance to shoves.
-The town menu displays mass. Select opens the Handling Lab to tune all seven
-physics values directly; A in that lab restores the fitted preset. These are relative
+The town menu displays mass. Select opens the field menu; choose DRIVE to tune all
+seven physics values directly. A on a tuning row restores the fitted preset. These are relative
 arcade handling values, not a real-world vehicle model; no enemy tank art or
 dedicated tank setup yet.
 
 Changing setups in town does not reset position or regenerate the world.
-The selected setup carries across catalog maps. Closing or resetting the
-emulator clears the session; cartridge save support is not implemented yet.
+The selected setup carries across catalog maps. To retain a run across a reset,
+open Select, press R three times for SAVE, and choose SAVE GAME. After reboot,
+choose CONTINUE GAME on the title; the saved region is regenerated and the
+profile is applied. Active races and local enemy/projectile
+state are deliberately rebuilt rather than serialized. If the map catalog changed,
+credits and completed-job progression remain, but an active contract is cleared
+because its old map references may no longer be meaningful.
+
+mGBA and RetroArch's mGBA core recognize the ROM's SRAM marker and store this
+profile in their normal battery-save file (commonly .sav). Emulator save-states
+also capture the SRAM contents and complete live machine state. Use SAVE GAME
+for a portable profile; save-state files are emulator/version specific.
 
 WHAT IS IN THIS DEMO
 --------------------
 - Native GBA ROM, C++ / Butano / devkitARM.
-- Seven catalog-selected 8k procedural maps with fixed seeds, connected floor,
+- Three catalog-selected 8k procedural maps with fixed seeds, connected floor,
   canyon walls, six settlement icons, live minimaps and a town/garage scene loop.
 - Five pooled enemy drivers, typed regional spawn profiles, cooldowns, loot and despawning.
 - Grouped normal weapons, a dedicated special trigger, three-hit enemies, player
@@ -313,14 +384,18 @@ WHAT IS IN THIS DEMO
 - Skid/dust particles and synthesized motor, tire, impact, and UI sounds. The
   motor uses a low evolving rumble, narrow pitch range and sustained-driving
   fade so it supplies throttle feedback without dominating long trips.
-- Title screen, pause/help screen and paused vehicle/audio lab.
+- Title screen, pause/help screen and paused map/drive/music/save field menu.
+- A manual versioned SRAM profile with CRC validation, alternating copies and a
+  commit-last write. It preserves location, setup/tuning, body and battery,
+  audio, inventory/crafting, vitals/loadout, credits, contract progress and records.
 - Local browser workshop backed by the same shared map catalog compiled into the ROM.
 
 This is the driving foundation for an original vehicle-adventure RPG,
 inspired by Racing Gears Advance's handling and Car Battler Joe's vehicle
 progression. It does not reproduce either game's code, artwork, sound,
-maps, names, or exact physics. Inventory and upgrades are session-only; cartridge
-save persistence is not implemented yet.
+maps, names, or exact physics. Manual cartridge persistence is available from
+the development field menu, and a valid profile enables CONTINUE GAME on the
+title. Automatic checkpoints are not implemented yet.
 
 BUILD ON WINDOWS
 ----------------
@@ -345,8 +420,8 @@ Output:
 
 The first build needs internet access and downloads sizeable dependencies.
 Later builds reuse .tools/butano and the local dustline-build:1 Docker image.
-The project is hosted at https://github.com/abhuva/dirtline; pushes to main are
-built automatically and published at https://github.com/abhuva/dirtline/releases/latest.
+The project is hosted at https://github.com/abhuva/dustline; pushes to main are
+built automatically and published at https://github.com/abhuva/dustline/releases/latest.
 The local build script does not change global PATH settings.
 
 To force a clean rebuild:
@@ -431,11 +506,35 @@ the refresh button chooses a new seed. Click a seed thumbnail to explore it.
 The Map selector loads entries from maps/map-library.json. New starts a blank
 draft, Save updates its catalog entry, and Save As creates a separate entry.
 Drafts may be incomplete while Include in game is off. Enabling that checkbox
-requires a complete valid graph; enabled entries appear on the ROM title screen
-after the next build. Delete map removes the selected catalog entry. The local
+requires a complete valid graph; enabled entries are compiled into the connected
+game world after the next build. Delete map removes the selected catalog entry. The local
 server uses revision checks and atomic file replacement to prevent stale tabs
 from silently overwriting newer saves. Unsaved edits are recovered per map in
 the browser when the catalog revision still matches. Ctrl+S also saves.
+Version 6 separates map placements from generation nodes. A Portal has a stable
+lowercase ID and rectangular trigger centre/size; it contains no arrival data.
+A Player Spawn has its own stable ID, position and arrival heading. Placements
+is the default preview. It uses a clean wall/floor/road/town schematic instead
+of full terrain textures, with orange Portal rectangles and cyan directional
+Player Spawn markers. Drag a marker to move it, drag a spawn's heading handle to
+turn it, or edit exact values below the preview. The list, Focus/Fit, duplicate,
+delete and Create arrival spawn controls make dense maps easier to author.
+Invalid placements are red. Every Portal receives a deterministic shortest path
+over drivable floor to the nearest existing road; later Portal branches may join
+earlier ones.
+
+Open World map for the separate region graph. Enabled maps are draggable nodes;
+orange ports are source Portals and cyan ports are destination Player Spawns.
+Spawn ports and connection destinations include their current x,y coordinates,
+which makes arrival points accidentally left beside a map's start easy to spot.
+Click a free Portal and then a Player Spawn to create a directed transition.
+Author the reverse trip separately. Choose both the starting region and starting
+spawn there. Unconnected Portals are allowed and stay inactive in the ROM. The
+graph is derived from enabled maps whenever the library is saved: valid existing
+transitions and node positions are retained, while nodes and transitions for a
+disabled map or removed Portal/Player Spawn are discarded. Newly enabled maps
+appear without transitions. Save world writes placement edits and graph rewiring
+through the same revision-checked atomic API.
 Drag between output and input ports in either direction to connect them; dropping
 onto an occupied input replaces its connection. Outputs can feed multiple inputs.
 Click the x beside a connected input to disconnect it. Escape or dropping on
@@ -506,7 +605,7 @@ requests the two original near-start anchors; they count toward the target and
 respect both the field and spacing. Five active enemy cars remains the limit.
 Input B is a categorical 0-255 population field. Its value selects a per-map
 Population profile containing enemy type, respawn seconds, scrap chance/range,
-blueprint/chance, and energy-cell chance/minimum/maximum. Constant field,
+and energy-cell chance/minimum/maximum. Constant field,
 Stepped LUT and Paint field
 value author uniform, banded and masked regions. Unmatched IDs use the first
 profile. The Wasteland map demonstrates three north/center/south profiles.
@@ -622,7 +721,7 @@ export remain available for exchange and backups; they do not change the shared
 catalog until saved through the workshop.
 Graph positions and labels are editor-only; unconnected branches are not exported.
 
-Both recipe versions are bounded: 64x64 logical cells, 32 total nodes, six live
+Recipes are bounded: 64x64 logical cells, 64 total nodes, six live
 4 KiB grids per output. The two programs run sequentially in the same workspace. The executor reuses buffers after their last consumer. CPU cost depends
 on the operations and iteration counts. Browser timing is not a GBA estimate.
 Arbitrary recipes still need clearance, settlement-spacing and driving playtests;
@@ -668,8 +767,8 @@ It never teleports the car or writes game state to make tests pass.
 The current build and complete host/ROM suite pass. See artifacts/test-results.json
 and the focused result files for exact results and the tested ROM hash.
 
-It checks title catalog enumeration, every enabled map's fixed seed, repeatable
-generation, acceleration, camera look-ahead, pause and frame budget. Exact
+It checks the New Game/conditional Continue title flow, every enabled region's
+fixed seed, repeatable generation, acceleration, camera look-ahead, pause and frame budget. Exact
 results and peak timings are recorded in artifacts/test-results.json, excluding
 car, UI and particles from terrain pixel comparisons.
 The procedural generator has a 128-seed host sweep: determinism, independent
@@ -800,7 +899,8 @@ catalog entry releases the previous layout and regenerates from the saved seed.
 This is a first reusable art pass: texture repetition, coarse map-scale shapes,
 simple material boundaries and conservative town hitboxes remain visible.
 The layout is connected, but route variety, travel times, wall readability and
-cornering comfort need human controller testing. No world/seed persistence yet.
+cornering comfort need human controller testing. Manual profiles persist the
+current region and coordinates; automatic world checkpoints are not implemented.
 
 PROJECT FILES
 -------------
@@ -810,6 +910,9 @@ build.ps1 / test.ps1        Build and emulator verification entry points
 include/driving.h          Vehicle data, tuning presets, and physics interface
 src/driving.bn_iwram.cpp   Motion, surfaces, and collision response (ARM hot loop)
 src/main.cpp               Input, camera, presentation, lap rules, and audio
+include/save_data.h        Stable versioned profile schema and redundant slot format
+src/save_data.cpp          Explicit byte codec, validation and CRC implementation
+src/save_store.cpp         Butano SRAM reads, alternating writes and erase support
 include/adaptive_music.h   Quantized section switching and intensity hysteresis
 src/adaptive_music.cpp     Maxmod playback, boundary jumps and menu ducking
 include/mission.h          Bounded session contract state and lifecycle interface

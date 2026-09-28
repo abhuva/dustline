@@ -63,9 +63,9 @@ int main() {
     cases[2]={op(99),-1,-1,-1,0,{}}; assert(validate(cases,3)==error::opcode);
 
     // Long chains release buffers; independent branches have a hard budget.
-    node chain[32];chain[0]=default_nodes[0];
-    for(int i=1;i<32;++i) chain[i]={op::invert,i-1,-1,-1,0,{}};
-    result=execute(chain,32,42,work);assert(result.status==error::ok && result.peak_buffers==2);
+    node chain[max_nodes];chain[0]=default_nodes[0];
+    for(int i=1;i<max_nodes;++i) chain[i]={op::invert,i-1,-1,-1,0,{}};
+    result=execute(chain,max_nodes,42,work);assert(result.status==error::ok && result.peak_buffers==2);
     node crowded[13];
     for(int i=0;i<7;++i) crowded[i]={op::random,-1,-1,-1,uint32_t(i),{47,2}};
     crowded[7]={op::combine,0,1,-1,0,{}};
@@ -166,6 +166,23 @@ int main() {
         work.roads.generate(work.layout,work.scratch,32,255);
         assert(std::memcmp(saved,work.roads.links,4096)==0);
         assert(work.roads.material==255);
+        if(seed==42) {
+            int target=-1;
+            for(int at=0;at<4096 && target<0;++at)if(!work.layout.cells()[at] && !work.roads.links[at]) {
+                int x=at%64*128+64,y=at/64*128+64;
+                if(!work.layout.town_solid(x,y))target=at;
+            }
+            assert(target>=0);
+            int x=target%64*128+64,y=target/64*128+64;
+            assert(work.roads.connect_portal(work.layout,work.scratch,x,y));
+            assert(work.roads.links[target]);
+            for(int at=0;at<4096;++at)for(int d=0;d<4;++d)if(work.roads.links[at]&(1<<d)) {
+                int next=at+road_network::dx[d]+road_network::dy[d]*64;
+                assert(next>=0 && next<4096 && !work.layout.cells()[next]);
+                assert(work.roads.links[next]&(1<<((d+2)%4)));
+            }
+            assert(!work.roads.connect_portal(work.layout,work.scratch,4,4));
+        }
     }
     road_nodes[3].p[0]=257;assert(validate(road_nodes,4)==error::parameter);
     road_nodes[3].p[0]=7;assert(validate(road_nodes,4)==error::parameter);

@@ -1,4 +1,4 @@
-import {compile, makeNode, LUT_MAX_POINTS, defaultLutColor, normalizeSpawnProfiles} from './recipe.mjs';
+import {compile, makeNode, MAX_NODES, LUT_MAX_POINTS, defaultLutColor, normalizeSpawnProfiles, normalizePlacements} from './recipe.mjs';
 
 const $ = id => document.getElementById(id);
 const element = (tag, className, text) => {
@@ -29,14 +29,16 @@ const libraryResponse=await fetch('/api/library');
 if(!libraryResponse.ok)throw new Error(`Could not load the map library (${libraryResponse.status}).`);
 const libraryEnvelope=await libraryResponse.json();
 let library=libraryEnvelope.library,libraryRevision=libraryEnvelope.revision;
+let worldDraft=null,worldPending=null,worldDirty=false;
 const ops = new Map(schema.operations.map(o => [o.id,o]));
 const savedSelection=localStorage.getItem('dustline.map-selection.v1');
 let currentId=library.maps.some(entry=>entry.id===savedSelection)?savedSelection:library.maps[0].id;
 let currentEntry=library.maps.find(entry=>entry.id===currentId);
-let recipe=clone(currentEntry.recipe),includeInGame=currentEntry.includeInGame;recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);
+let recipe=normalizePlacements(clone(currentEntry.recipe)),includeInGame=currentEntry.includeInGame;recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);
 let selected=recipe.output??recipe.nodes[0]?.id??null,pending=null,dirty=false;
 let undo = [], redo = [], sequence = 0, ready = false, timer, lastResponse, iteration = null;
 let zoom=1,panX=0,panY=0;
+let placementSelection=null,placementZoom=1,placementPanX=0,placementPanY=0,placementDrag=null,placementAddKind=null;
 let pinnedSettings = null;
 let lutHistogram=null,lutHistogramNode=null,lutPointSelection=null;
 let renderRequest=0,renderUrl=null,renderBlob=null,renderSeed=0,renderBusy=false;
@@ -44,7 +46,7 @@ let cancelConnectionDrag = null, suppressPortClick = false;
 try {
   const saved=JSON.parse(localStorage.getItem('dustline.map-draft.v1'));
   if(saved?.id===currentId&&saved.revision===libraryRevision&&saved.recipe){
-    recipe=saved.recipe;recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);includeInGame=Boolean(saved.includeInGame);selected=recipe.output??recipe.nodes[0]?.id??null;dirty=true;
+    recipe=normalizePlacements(saved.recipe);recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);includeInGame=Boolean(saved.includeInGame);selected=recipe.output??recipe.nodes[0]?.id??null;dirty=true;
   }
 } catch { /* A broken draft must never prevent opening the workshop. */ }
 const worker = new Worker('./worker.mjs', {type:'module'});
@@ -117,7 +119,7 @@ function render() {
   if(pinnedSettings!==null && !recipe.nodes.some(n=>n.id===pinnedSettings))pinnedSettings=null;
   $('recipe-name').value = recipe.name ?? 'Untitled recipe'; $('seed').value = recipe.seed;
   $('include-in-game').checked=includeInGame;updateMapControls();
-  renderGraph(); renderInspector(); schedule();
+  renderGraph(); renderInspector();renderPlacementControls(); schedule();
 }
 function summary(n) {
   if (n.type === 'random') return `${n.p[0]}% walls · border ${n.p[1]}`;
@@ -438,7 +440,7 @@ function renderInspector() {
   $('pin-settings').title=pinned?'Let settings follow the selected node':'Keep these controls while selecting another node to preview';
   $('inspector-node-name').textContent=n?`${pinned?'Pinned: ':''}${n.label}`:'';
   $('delete').disabled=!n || recipe.nodes.length===1;
-  $('duplicate').disabled=!n || recipe.nodes.length>=32;
+  $('duplicate').disabled=!n || recipe.nodes.length>=MAX_NODES;
   $('delete').title=n?`Delete ${n.label}`:'';
   $('duplicate').title=n?`Duplicate ${n.label}`:'';
   const selectedType=recipe.nodes.find(n=>n.id===selected)?.type;
@@ -533,7 +535,9 @@ function generate() {
   try {
     let final=null;
     try {final=compile(recipe,schema,recipe.output,false);} catch { /* Independent stages can still be previewed. */ }
-    const view=$('view').value, target=['selected','compare'].includes(view)?selected:recipe.output;
+    const view=$('view').value, requestedTarget=['selected','compare'].includes(view)?selected:recipe.output;
+    const requestedNode=recipe.nodes.find(n=>n.id===requestedTarget);
+    const target=requestedTarget;
     const previewRecipe=clone(recipe), node=previewRecipe.nodes.find(n=>n.id===target);
     const iterationNode=previewRecipe.nodes.find(n=>n.id===settingsNodeId()),settingsNode=iterationNode;
     if(iteration!==null && iterationNode?.type==='cellular') iterationNode.p[0]=iteration;
@@ -555,13 +559,14 @@ function generate() {
     $('export').disabled=Boolean(exportError); $('export').title=exportError||'Download the procedural recipe';
     $('recipe-status').textContent=(final?`${recipe.nodes.length} NODES · WALL/FLOOR + ${materialProgram?'GROUND IDS':'ORIGINAL GROUND'} · v${recipe.version}`:`${recipe.nodes.length} NODES · OUTPUT NEEDS A CONNECTION`)+` · ${dirty?'UNSAVED':'SAVED'}`;
     $('render-map').disabled=renderBusy || Boolean(exportError) || !final;
-    $('preview-title').textContent=view==='seeds'?'Nine possibilities':node.label;
+    $('preview-title').textContent=view==='seeds'?'Nine possibilities':view==='placements'?'Portal & spawn layout':node.label;
     $('preview-label').textContent=view==='seeds'?'CLICK A SEED TO EXPLORE':compiled.kind==='field'?'FIELD · 0—255':compiled.kind==='material'?'GROUND MATERIAL IDS · 0—255':$('layer').value==='textures'?'GAME TEXTURES · 8192 × 8192':'64 × 64 / 8192 px';
     const compare=!placement && view==='compare' && node.inputs?.a ? compile(previewRecipe,schema,node.inputs.a,false).program : null;
     const seeds=view==='seeds'?Array.from({length:9},(_,i)=>(recipe.seed+i)>>>0):null;
     message(exportError || 'Generating…',exportError?'warning':'');
     const categoricalColors=node?.type==='field_lut'?lutPreviewColors(node):null;
-    worker.postMessage({id:sequence,mapId:currentId,program:compiled.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,histogramProgram,histogramNode:histogramProgram?settingsNode.id:null,categorical:!!categoricalColors,categoricalColors,showSpawns:$('show-spawns').checked,seed:recipe.seed,collision:$('layer').value==='collision' && !seeds,textures:$('layer').value==='textures',seeds,compare});
+    const schematic=view==='placements';
+    worker.postMessage({id:sequence,mapId:currentId,program:compiled.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,portals:recipe.portals,playerSpawns:recipe.playerSpawns,histogramProgram,histogramNode:histogramProgram?settingsNode.id:null,categorical:!!categoricalColors,categoricalColors,showSpawns:$('show-spawns').checked,seed:recipe.seed,schematic,collision:(schematic||$('layer').value==='collision')&&!seeds,textures:!schematic&&$('layer').value==='textures',seeds,compare});
   } catch(error) {
     $('export').disabled=true; $('preview').setAttribute('aria-busy','false');
     $('preview-label').textContent='INVALID GRAPH · PREVIOUS PREVIEW'; message(error.message,'error');
@@ -609,16 +614,43 @@ function markers(ctx,output,x,y,size) {
     else {ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.stroke();}
   }
 }
+function placementItems(){return [...recipe.portals.map(item=>({kind:'portal',item})),...recipe.playerSpawns.map(item=>({kind:'spawn',item}))];}
+function placementKey(kind,id){return `${kind}:${id}`;}
+function selectedPlacement(){return placementItems().find(value=>placementKey(value.kind,value.item.id)===placementSelection)??null;}
+function placementScreen(x,y){const size=640*placementZoom;return {x:placementPanX+x/8192*size,y:placementPanY+y/8192*size};}
+function placementWorld(x,y){const size=640*placementZoom;return {x:Math.max(0,Math.min(8191,Math.round((x-placementPanX)/size*8192/8)*8)),y:Math.max(0,Math.min(8191,Math.round((y-placementPanY)/size*8192/8)*8))};}
+function schematicCanvas(output){
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=1024;const ctx=canvas.getContext('2d'),pixels=ctx.createImageData(1024,1024);
+  const collision=output.refined??new Uint8Array(1024*1024),roads=output.roads??new Uint8Array(1024*1024);
+  for(let i=0;i<collision.length;++i){const color=collision[i]?[34,57,47]:roads[i]?[177,137,80]:[202,187,145];pixels.data.set([...color,255],i*4);}
+  ctx.putImageData(pixels,0,0);return canvas;
+}
+function drawPlacementView(ctx,output){
+  const size=640*placementZoom;ctx.drawImage(schematicCanvas(output),placementPanX,placementPanY,size,size);
+  for(let index=0;index<6;++index){const town=placementScreen(output.meta[8+index*2],output.meta[9+index*2]-32);ctx.fillStyle='#e7f6bcbb';ctx.strokeStyle='#253b2b';ctx.lineWidth=1.5;ctx.fillRect(town.x-5,town.y-5,10,10);ctx.strokeRect(town.x-5,town.y-5,10,10);ctx.fillStyle='#17211b';ctx.font='8px Consolas';ctx.fillText(`T${index+1}`,town.x-4,town.y+3);}
+  const invalid=new Set(output.invalidPortals??[]),invalidSpawns=new Set(output.invalidPlayerSpawns??[]);
+  for(const {kind,item} of placementItems()){
+    const point=placementScreen(item.x,item.y),isSelected=placementSelection===placementKey(kind,item.id);ctx.save();
+    if(kind==='portal'){
+      const width=Math.max(12,item.width/8192*size),height=Math.max(12,item.height/8192*size);ctx.strokeStyle=invalid.has(item.id)?'#f06f58':isSelected?'#fff8cf':'#efad43';ctx.fillStyle=invalid.has(item.id)?'#f06f5838':'#efad432c';ctx.lineWidth=isSelected?3:2;ctx.fillRect(point.x-width/2,point.y-height/2,width,height);ctx.strokeRect(point.x-width/2,point.y-height/2,width,height);
+    }else{
+      const angle=(item.heading-90)*Math.PI/180,tip={x:point.x+Math.cos(angle)*22,y:point.y+Math.sin(angle)*22};ctx.strokeStyle=invalidSpawns.has(item.id)?'#f06f58':isSelected?'#ffffff':'#55d8df';ctx.fillStyle=invalidSpawns.has(item.id)?'#f06f58':'#55d8df';ctx.lineWidth=isSelected?3:2;ctx.beginPath();ctx.arc(point.x,point.y,isSelected?6:5,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(point.x,point.y);ctx.lineTo(tip.x,tip.y);ctx.stroke();ctx.beginPath();ctx.arc(tip.x,tip.y,isSelected?4:3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=isSelected?'#fff8cf':kind==='portal'?'#efc46c':'#9eeef1';ctx.font='10px Consolas';ctx.fillText(item.id,point.x+8,point.y-7);ctx.restore();
+  }
+}
 function draw(data) {
   const canvas=$('preview'),ctx=canvas.getContext('2d'),layer=$('layer').value;
   ctx.imageSmoothingEnabled=false;ctx.fillStyle='#111c17';ctx.fillRect(0,0,640,640);
   const first=data.outputs[0],grid=data.outputs.length>1;
   const categoricalColors=data.categorical?data.categoricalColors??[]:null;
-  const legend=categoricalColors?[...new Set(first.cells)].sort((a,b)=>a-b).map(value=>[`Output ${value}`,categoricalColors[value]??defaultLutColor(value)]):
+  const placementView=$('view').value==='placements';
+  const legend=placementView?[['Floor','#cabb91'],['Wall','#22392f'],['Road','#b18950'],['Portal','#efad43'],['Player Spawn','#55d8df']]:categoricalColors?[...new Set(first.cells)].sort((a,b)=>a-b).map(value=>[`Output ${value}`,categoricalColors[value]??defaultLutColor(value)]):
     first.meta[1]===3 || first.texture ? materialCatalog.map(m=>[m.name,m.color]) : [['Floor','#d8b77b'],['Wall','#28483d'],['Spawn','#f08b5b'],['Outpost','#e7f6bc']];
   if(first.spawns && $('show-spawns').checked)for(const profile of recipe.spawnProfiles)legend.push([profile.name,profile.color]);
   $('legend').replaceChildren(...legend.map(([name,color])=>{const item=element('span'),swatch=element('i');swatch.style.background=color;item.append(swatch,document.createTextNode(name));return item;}));
-  if(grid) {
+  if(placementView){drawPlacementView(ctx,first);}
+  else if(grid) {
     data.outputs.forEach((output,i)=>{
       const x=(i%3)*216,y=Math.floor(i/3)*216;
       ctx.drawImage(paint(output,layer==='regions',false,categoricalColors),x,y,208,186);
@@ -643,6 +675,7 @@ function draw(data) {
   ];
   if(first.meta[1]===3){items[0]=['Material IDs',String(new Set(first.cells).size),'distinct'];items[1]=['ID range',`${min}—${max}`,''];}
   if(first.spawns){items[0]=['Spawn locations',String(first.spawns.length/2),first.requestedSpawns==null?'legacy':`/ ${first.requestedSpawns} requested`];items[1]=['Decoration patches',String(first.patches??0),'cosmetic'];}
+  if(placementView){items[0]=['Portals',String(recipe.portals.length),`${first.invalidPortals?.length??0} invalid`];items[1]=['Player spawns',String(recipe.playerSpawns.length),`${first.invalidPlayerSpawns?.length??0} invalid`];}
   $('metrics').replaceChildren(...items.map(([name,value,unit])=>{
     const metric=element('div','metric');metric.append(element('span','',name));
     const strong=element('strong','',value);strong.append(element('small','',unit));metric.append(strong);return metric;
@@ -657,8 +690,37 @@ function draw(data) {
   const unknown=[...new Set(data.outputs.flatMap(o=>o.unknown??[]))];
   if(first.requestedSpawns!=null && first.spawns.length/2<first.requestedSpawns)text+=` Placed ${first.spawns.length/2}/${first.requestedSpawns} spawns: floor, probability field or spacing limits available anchors.`;
   if(unknown.length)text+=` Unassigned material IDs: ${unknown.join(', ')}. IDs are preserved; game art and grip fall back to sand.`;
+  if(placementView && first.invalidPortals?.length)text+=` Portal access needs drivable floor: ${first.invalidPortals.join(', ')}.`;
+  if(placementView && first.invalidPlayerSpawns?.length)text+=` Player Spawns need drivable floor: ${first.invalidPlayerSpawns.join(', ')}.`;
   try {const valid=compile(recipe,schema);if(valid.kind!=='world')text+=' Choose a Playable world output to export.';}catch(error){text+=` Export unavailable: ${error.message}`;}
   message(text,fallback||unknown.length?'warning':'');
+}
+
+function uniquePlacementId(prefix,items){const ids=new Set(items.map(item=>item.id));let index=1,id=`${prefix}_${index}`;while(ids.has(id))id=`${prefix}_${++index}`;return id;}
+function nearestDrivable(point){
+  const collision=lastResponse?.outputs?.[0]?.refined;if(!collision)return point;
+  const tx=Math.max(0,Math.min(1023,Math.round(point.x/8))),ty=Math.max(0,Math.min(1023,Math.round(point.y/8)));
+  for(let radius=0;radius<96;++radius)for(let y=Math.max(0,ty-radius);y<=Math.min(1023,ty+radius);++y)for(const x of [tx-radius,tx+radius])if(x>=0&&x<1024&&!collision[y*1024+x])return {x:x*8+4,y:y*8+4};
+  return point;
+}
+function addPlacement(kind,point){
+  point=nearestDrivable(point);change(()=>{
+    if(kind==='portal'){const item={id:uniquePlacementId('portal',recipe.portals),x:point.x,y:point.y,width:128,height:48};recipe.portals.push(item);placementSelection=placementKey('portal',item.id);}
+    else {const item={id:uniquePlacementId('spawn',recipe.playerSpawns),x:point.x,y:point.y,heading:0};recipe.playerSpawns.push(item);placementSelection=placementKey('spawn',item.id);}
+    recipe.version=6;
+  });renderPlacementControls();
+}
+function focusPlacement(){const selected=selectedPlacement();if(!selected)return;placementZoom=4;const point=placementScreen(selected.item.x,selected.item.y);placementPanX+=320-point.x;placementPanY+=320-point.y;if(lastResponse)draw(lastResponse);}
+function renderPlacementControls(){
+  const active=$('view').value==='placements';$('placement-tools').hidden=!active;$('placement-inspector').hidden=!active;$('placement-viewport').classList.toggle('placement-active',active);$('placement-viewport').closest('.preview-panel').classList.toggle('placement-mode',active);if(!active)return;
+  const items=placementItems();if(!items.some(value=>placementKey(value.kind,value.item.id)===placementSelection))placementSelection=items.length?placementKey(items[0].kind,items[0].item.id):null;
+  const list=$('placement-list');list.replaceChildren(...items.map(({kind,item})=>{const option=element('option','',`${kind==='portal'?'PORTAL':'SPAWN'} · ${item.id}`);option.value=placementKey(kind,item.id);return option;}));list.value=placementSelection??'';
+  const selected=selectedPlacement(),root=$('placement-inspector');root.replaceChildren();if(!selected){root.append(element('span','muted','Add a Portal or Player Spawn, then click the map to place it.'));return;}
+  const field=(label,key,min,max,className='')=>{const wrapper=element('label',className,label),input=element('input');input.type=key==='id'?'text':'number';input.value=selected.item[key];if(key==='id'){input.maxLength=24;input.pattern='[a-z0-9]+(?:_[a-z0-9]+)*';}else{input.min=min;input.max=max;input.step=1;}input.setAttribute('aria-label',`${selected.kind==='portal'?'Portal':'Player spawn'} ${label}`);input.onchange=()=>{let value=key==='id'?input.value.trim():Number(input.value);const siblings=selected.kind==='portal'?recipe.portals:recipe.playerSpawns;if(!input.validity.valid||value===''||(key==='id'&&siblings.some(item=>item!==selected.item&&item.id===value))){input.value=selected.item[key];return;}change(()=>{selected.item[key]=value;if(key==='id')placementSelection=placementKey(selected.kind,value);recipe.version=6;});renderPlacementControls();};wrapper.append(input);root.append(wrapper);};
+  field('ID','id',0,0,'placement-id');field('X','x',0,8191);field('Y','y',0,8191);if(selected.kind==='portal'){field('Width','width',16,512);field('Height','height',16,512);}else field('Heading','heading',0,359);
+  const actions=element('div','placement-actions'),duplicate=element('button','','Duplicate'),remove=element('button','danger','Delete');duplicate.onclick=()=>change(()=>{const items=selected.kind==='portal'?recipe.portals:recipe.playerSpawns,item=clone(selected.item);item.id=uniquePlacementId(selected.kind==='portal'?'portal':'spawn',items);item.x=Math.min(8191,item.x+64);item.y=Math.min(8191,item.y+64);items.push(item);placementSelection=placementKey(selected.kind,item.id);});remove.onclick=()=>change(()=>{const items=selected.kind==='portal'?recipe.portals:recipe.playerSpawns,index=items.indexOf(selected.item);if(index>=0)items.splice(index,1);placementSelection=null;});actions.append(duplicate);
+  if(selected.kind==='portal'){const arrival=element('button','','Create arrival spawn');arrival.onclick=()=>{const dx=4096-selected.item.x,dy=4096-selected.item.y,length=Math.max(1,Math.hypot(dx,dy)),distance=Math.max(selected.item.width,selected.item.height)/2+80,point=nearestDrivable({x:Math.round((selected.item.x+dx/length*distance)/8)*8,y:Math.round((selected.item.y+dy/length*distance)/8)*8});change(()=>{const item={id:uniquePlacementId(`${selected.item.id}_arrival`,recipe.playerSpawns),x:point.x,y:point.y,heading:(Math.round(Math.atan2(dy,dx)*180/Math.PI)+360)%360};recipe.playerSpawns.push(item);placementSelection=placementKey('spawn',item.id);recipe.version=6;});renderPlacementControls();};actions.append(arrival);}
+  actions.append(remove);root.append(actions);
 }
 
 function renderMapOptions(){
@@ -677,13 +739,13 @@ function updateMapControls(){
 }
 function resetEditorState(){
   selected=recipe.output??recipe.nodes[0]?.id??null;pending=null;pinnedSettings=null;lutPointSelection=null;
-  undo=[];redo=[];iteration=null;panX=panY=0;zoom=1;$('view').value='final';
+  undo=[];redo=[];iteration=null;panX=panY=0;zoom=1;placementZoom=1;placementPanX=placementPanY=0;placementDrag=null;placementSelection=recipe.portals.length?placementKey('portal',recipe.portals[0].id):recipe.playerSpawns.length?placementKey('spawn',recipe.playerSpawns[0].id):null;$('view').value='placements';
   $('undo').disabled=true;$('redo').disabled=true;
 }
 function discardAllowed(){return !dirty||window.confirm('Discard unsaved changes to this map?');}
 function loadMap(id){
   const entry=library.maps.find(entry=>entry.id===id);if(!entry)return;
-  currentId=id;currentEntry=entry;recipe=clone(entry.recipe);recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);includeInGame=entry.includeInGame;dirty=false;
+  currentId=id;currentEntry=entry;recipe=normalizePlacements(clone(entry.recipe));recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);includeInGame=entry.includeInGame;dirty=false;
   localStorage.setItem('dustline.map-selection.v1',id);localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');
   resetEditorState();render();message(`Loaded ${recipe.name}.`);
 }
@@ -693,10 +755,11 @@ function slug(name){
 }
 async function writeLibrary(next,nextId,success){
   try{
+    reconcileWorld(next);
     const response=await fetch('/api/library',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:libraryRevision,library:next})});
     const result=await response.json();if(!response.ok)throw new Error(result.error||`Save failed (${response.status}).`);
     library=result.library;libraryRevision=result.revision;currentId=nextId;currentEntry=library.maps.find(entry=>entry.id===currentId);
-    recipe=clone(currentEntry.recipe);includeInGame=currentEntry.includeInGame;dirty=false;
+    recipe=normalizePlacements(clone(currentEntry.recipe));includeInGame=currentEntry.includeInGame;dirty=false;
     localStorage.setItem('dustline.map-selection.v1',currentId);localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');
     resetEditorState();render();message(success);
   }catch(error){message(error.message,'error');updateMapControls();}
@@ -719,7 +782,7 @@ $('preset').onchange=()=>{const id=$('preset').value;if(discardAllowed())loadMap
 $('new-map').onclick=()=>{
   if(!discardAllowed())return;
   const name=window.prompt('Name for the new map','Untitled map')?.trim();if(!name)return;
-  currentId=null;recipe={version:4,name,seed:crypto.getRandomValues(new Uint32Array(1))[0],nodes:[],artProfile:normalizedArtProfile('sun'),spawnProfiles:normalizeSpawnProfiles()};includeInGame=false;dirty=true;
+  currentId=null;recipe={version:6,name,seed:crypto.getRandomValues(new Uint32Array(1))[0],nodes:[],portals:[],playerSpawns:[],artProfile:normalizedArtProfile('sun'),spawnProfiles:normalizeSpawnProfiles()};includeInGame=false;dirty=true;
   resetEditorState();save();render();message('New draft. Add nodes, then Save to add it to the shared library.');
 };
 $('save-map').onclick=()=>saveMap(false);$('save-as').onclick=()=>saveMap(true);
@@ -790,26 +853,91 @@ function renderPopulationDialog(){
   const rows=recipe.spawnProfiles.map((profile,index)=>{
     const row=element('div','population-binding');
     const color=element('input','profile-color');color.type='color';color.value=profile.color;
-    color.oninput=()=>change(()=>{profile.color=color.value;recipe.version=4;});
-    const name=element('input');name.maxLength=18;name.value=profile.name;name.onchange=()=>change(()=>{profile.name=name.value.trim();recipe.version=4;});
-    const number=(value,min,max,apply)=>{const input=element('input');input.type='number';input.min=min;input.max=max;input.value=value;input.onchange=()=>{if(input.validity.valid&&input.value!=='')change(()=>{apply(Number(input.value));recipe.version=4;});};return input;};
-    const enemy=element('select');for(const [value,label] of [['scout','Scout'],['raider','Raider'],['heavy','Heavy']]){const option=element('option','',label);option.value=value;enemy.append(option);}enemy.value=profile.enemy;enemy.onchange=()=>change(()=>{profile.enemy=enemy.value;recipe.version=4;});
-    const blueprint=element('select');for(const [value,label] of [['none','None'],['salvage_magnet','Salvage magnet'],['tuned_injector','Tuned injector'],['reinforced_plating','Reinforced plating']]){const option=element('option','',label);option.value=value;blueprint.append(option);}blueprint.value=profile.blueprint;blueprint.onchange=()=>change(()=>{profile.blueprint=blueprint.value;recipe.version=4;});
-    const remove=element('button','','Delete');remove.disabled=recipe.spawnProfiles.length===1;remove.onclick=()=>{change(()=>{recipe.spawnProfiles.splice(index,1);recipe.version=4;});renderPopulationDialog();};
-    row.append(populationField('Color',color),populationField('Name',name),populationField('ID',number(profile.id,0,255,value=>profile.id=value)),populationField('Enemy',enemy),populationField('Respawn s',number(profile.respawnSeconds,1,600,value=>profile.respawnSeconds=value)),populationField('Scrap %',number(profile.scrapChance,0,100,value=>profile.scrapChance=value)),populationField('Scrap min',number(profile.scrapMin,0,15,value=>profile.scrapMin=value)),populationField('Scrap max',number(profile.scrapMax,0,15,value=>profile.scrapMax=value)),populationField('Blueprint',blueprint),populationField('BP %',number(profile.blueprintChance,0,100,value=>profile.blueprintChance=value)),populationField('Energy %',number(profile.energyChance,0,100,value=>profile.energyChance=value)),populationField('Energy min',number(profile.energyMin,0,100,value=>profile.energyMin=value)),populationField('Energy max',number(profile.energyMax,0,100,value=>profile.energyMax=value)),remove);
+    color.oninput=()=>change(()=>{profile.color=color.value;recipe.version=Math.max(4,recipe.version);});
+    const name=element('input');name.maxLength=18;name.value=profile.name;name.onchange=()=>change(()=>{profile.name=name.value.trim();recipe.version=Math.max(4,recipe.version);});
+    const number=(value,min,max,apply)=>{const input=element('input');input.type='number';input.min=min;input.max=max;input.value=value;input.onchange=()=>{if(input.validity.valid&&input.value!=='')change(()=>{apply(Number(input.value));recipe.version=Math.max(4,recipe.version);});};return input;};
+    const enemy=element('select');for(const [value,label] of [['scout','Scout'],['raider','Raider'],['heavy','Heavy']]){const option=element('option','',label);option.value=value;enemy.append(option);}enemy.value=profile.enemy;enemy.onchange=()=>change(()=>{profile.enemy=enemy.value;recipe.version=Math.max(4,recipe.version);});
+    const remove=element('button','','Delete');remove.disabled=recipe.spawnProfiles.length===1;remove.onclick=()=>{change(()=>{recipe.spawnProfiles.splice(index,1);recipe.version=Math.max(4,recipe.version);});renderPopulationDialog();};
+    row.append(populationField('Color',color),populationField('Name',name),populationField('ID',number(profile.id,0,255,value=>profile.id=value)),populationField('Enemy',enemy),populationField('Respawn s',number(profile.respawnSeconds,1,600,value=>profile.respawnSeconds=value)),populationField('Scrap %',number(profile.scrapChance,0,100,value=>profile.scrapChance=value)),populationField('Scrap min',number(profile.scrapMin,0,15,value=>profile.scrapMin=value)),populationField('Scrap max',number(profile.scrapMax,0,15,value=>profile.scrapMax=value)),populationField('Energy %',number(profile.energyChance,0,100,value=>profile.energyChance=value)),populationField('Energy min',number(profile.energyMin,0,100,value=>profile.energyMin=value)),populationField('Energy max',number(profile.energyMax,0,100,value=>profile.energyMax=value)),remove);
     return row;
   });
   $('population-bindings').replaceChildren(...rows);$('add-population').disabled=recipe.spawnProfiles.length>=8;
 }
 $('population-bank').onclick=()=>{renderPopulationDialog();$('population-dialog').showModal();};
 $('close-population').onclick=()=>$('population-dialog').close();
-$('add-population').onclick=()=>{if(recipe.spawnProfiles.length>=8)return;const ids=new Set(recipe.spawnProfiles.map(profile=>profile.id));let id=0;while(ids.has(id))++id;const colors=['#ef6c5b','#65b9dc','#e4bd57','#a889d6','#79bc7b','#d77faa','#8ac6b1','#d68e5d'];change(()=>{recipe.spawnProfiles.push({id,name:`Profile ${id}`,color:colors[recipe.spawnProfiles.length],enemy:'raider',respawnSeconds:30,scrapChance:70,scrapMin:1,scrapMax:3,blueprint:'none',blueprintChance:0,energyChance:25,energyMin:8,energyMax:16});recipe.version=4;});renderPopulationDialog();};
+$('add-population').onclick=()=>{if(recipe.spawnProfiles.length>=8)return;const ids=new Set(recipe.spawnProfiles.map(profile=>profile.id));let id=0;while(ids.has(id))++id;const colors=['#ef6c5b','#65b9dc','#e4bd57','#a889d6','#79bc7b','#d77faa','#8ac6b1','#d68e5d'];change(()=>{recipe.spawnProfiles.push({id,name:`Profile ${id}`,color:colors[recipe.spawnProfiles.length],enemy:'raider',respawnSeconds:30,scrapChance:70,scrapMin:1,scrapMax:3,energyChance:25,energyMin:8,energyMax:16});recipe.version=Math.max(4,recipe.version);});renderPopulationDialog();};
+
+function effectiveWorldMaps(){
+  return library.maps.map(entry=>entry.id===currentId&&dirty?{...entry,includeInGame,recipe}:entry).filter(entry=>entry.includeInGame);
+}
+function mapPortalIds(entry){return entry.recipe.portals.map(item=>item.id);}
+function mapPlayerSpawnIds(entry){return entry.recipe.playerSpawns.map(item=>item.id);}
+function portalKey(endpoint){return `${endpoint.map}:${endpoint.portal}`;}
+function reconcileWorld(target){
+  const maps=target.maps.filter(entry=>entry.includeInGame),existing=target.world?.version===2?target.world:{},validMapIds=new Set(maps.map(entry=>entry.id));
+  const validPortals=new Set(maps.flatMap(entry=>mapPortalIds(entry).map(portal=>`${entry.id}:${portal}`))),validSpawns=new Set(maps.flatMap(entry=>mapPlayerSpawnIds(entry).map(spawn=>`${entry.id}:${spawn}`)));
+  const positioned=new Map();for(const node of Array.isArray(existing.nodes)?existing.nodes:[])if(validMapIds.has(node?.map)&&!positioned.has(node.map))positioned.set(node.map,node);
+  const nodes=maps.map((entry,index)=>{const old=positioned.get(entry.id);return {map:entry.id,x:old?.x??80+(index%4)*250,y:old?.y??70+Math.floor(index/4)*210};});
+  const used=new Set(),connections=[];for(const link of Array.isArray(existing.connections)?existing.connections:[]){const key=link?.from?portalKey(link.from):'';
+    if(validPortals.has(key)&&validSpawns.has(`${link?.to?.map}:${link?.to?.spawn}`)&&!used.has(key)){used.add(key);connections.push(clone(link));if(connections.length===256)break;}}
+  const startMap=validMapIds.has(existing.start?.map)?existing.start.map:maps[0]?.id,startEntry=maps.find(entry=>entry.id===startMap),spawnIds=startEntry?mapPlayerSpawnIds(startEntry):[];
+  const startSpawn=validSpawns.has(`${startMap}:${existing.start?.spawn}`)?existing.start.spawn:spawnIds[0];
+  target.world={version:2,start:{map:startMap,spawn:startSpawn},nodes,connections};return target;
+}
+function resetWorldDraft(){
+  const snapshot={maps:effectiveWorldMaps().map(clone),world:clone(library.world??{})};reconcileWorld(snapshot);worldDraft=snapshot.world;
+  worldPending=null;worldDirty=false;
+}
+function worldValidation(){
+  const maps=effectiveWorldMaps();if(!maps.length)return 'Enable at least one map.';
+  const used=new Set();for(const link of worldDraft.connections){const key=portalKey(link.from);if(used.has(key))return `${link.from.map} / ${link.from.portal} has more than one destination.`;used.add(key);}
+  return '';
+}
+function renderWorldGraph(){
+  const maps=effectiveWorldMaps(),byId=new Map(maps.map(entry=>[entry.id,entry])),used=new Set(worldDraft.connections.map(link=>portalKey(link.from)));
+  const maxX=Math.max(1200,...worldDraft.nodes.map(node=>node.x+220)),maxY=Math.max(760,...worldDraft.nodes.map(node=>node.y+190));
+  for(const id of ['world-wires','world-nodes']){const target=$(id);target.style.width=`${maxX}px`;target.style.height=`${maxY}px`;}
+  const svg=$('world-wires');svg.setAttribute('viewBox',`0 0 ${maxX} ${maxY}`);svg.replaceChildren();
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  for(const [id,orient] of [['world-arrow-end','auto'],['world-arrow-start','auto-start-reverse']]){const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');marker.id=id;marker.setAttribute('viewBox','0 0 10 10');marker.setAttribute('refX','8');marker.setAttribute('refY','5');marker.setAttribute('markerWidth','7');marker.setAttribute('markerHeight','7');marker.setAttribute('orient',orient);const arrow=document.createElementNS('http://www.w3.org/2000/svg','path');arrow.setAttribute('d','M 0 0 L 10 5 L 0 10 z');arrow.setAttribute('fill','#eac35b');marker.append(arrow);defs.append(marker);}svg.append(defs);
+  const endpointPoint=(endpoint,kind)=>{const layout=worldDraft.nodes.find(node=>node.map===endpoint.map),entry=byId.get(endpoint.map),portals=mapPortalIds(entry),index=kind==='portal'?portals.indexOf(endpoint.portal):mapPlayerSpawnIds(entry).indexOf(endpoint.spawn);return {x:layout.x+(kind==='portal'?8:168),y:layout.y+72+(kind==='portal'?index:portals.length+index)*25};};
+  for(const link of worldDraft.connections){const a=endpointPoint(link.from,'portal'),b=endpointPoint(link.to,'spawn'),path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M${a.x},${a.y} C${a.x+(b.x-a.x)*.45},${a.y} ${b.x-(b.x-a.x)*.45},${b.y} ${b.x},${b.y}`);path.classList.add('world-wire','one-way');path.setAttribute('marker-end','url(#world-arrow-end)');svg.append(path);}
+  const nodeElements=worldDraft.nodes.map(layout=>{
+    const entry=byId.get(layout.map),node=element('div',`world-node${layout.map===worldDraft.start.map?' start':''}`);node.style.left=`${layout.x}px`;node.style.top=`${layout.y}px`;
+    const heading=element('div','world-node-heading');heading.append(element('strong','',entry.recipe.name),element('small','',entry.id));
+    heading.onpointerdown=event=>{if(event.button!==0)return;event.preventDefault();const startX=event.clientX,startY=event.clientY,originX=layout.x,originY=layout.y,pointer=event.pointerId;
+      const move=e=>{if(e.pointerId!==pointer)return;node.style.left=`${Math.max(0,originX+e.clientX-startX)}px`;node.style.top=`${Math.max(0,originY+e.clientY-startY)}px`;};
+      const end=e=>{if(e.pointerId!==pointer)return;window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);layout.x=Math.round(Math.max(0,originX+e.clientX-startX));layout.y=Math.round(Math.max(0,originY+e.clientY-startY));worldDirty=true;renderWorldGraph();};
+      window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);};
+    const ports=element('div','world-gates');for(const portal of mapPortalIds(entry)){const endpoint={map:entry.id,portal},key=portalKey(endpoint),button=element('button',`world-gate portal${used.has(key)?' used':''}${worldPending===key?' pending':''}`,`PORTAL · ${portal}`);button.onclick=()=>{
+      if(used.has(key)){$('world-status').textContent='That Portal already has a destination. Remove its transition below first.';return;}
+      if(worldPending===key){worldPending=null;renderWorldGraph();return;}
+      worldPending=key;renderWorldGraph();};ports.append(button);}
+    for(const spawn of entry.recipe.playerSpawns){const button=element('button','world-gate spawn',`SPAWN · ${spawn.id} @ ${spawn.x},${spawn.y}`);button.onclick=()=>{if(!worldPending){$('world-status').textContent='Choose a source Portal first.';return;}const [map,...parts]=worldPending.split(':');worldDraft.connections.push({from:{map,portal:parts.join(':')},to:{map:entry.id,spawn:spawn.id}});worldPending=null;worldDirty=true;renderWorldGraph();};ports.append(button);}
+    node.append(heading,ports);return node;
+  });$('world-nodes').replaceChildren(...nodeElements);
+  const start=$('world-start');start.replaceChildren(...maps.map(entry=>{const option=element('option','',entry.recipe.name);option.value=entry.id;return option;}));start.value=worldDraft.start.map??'';const startEntry=byId.get(worldDraft.start.map),startSpawn=$('world-start-spawn');startSpawn.replaceChildren(...startEntry.recipe.playerSpawns.map(spawn=>{const option=element('option','',`${spawn.id} @ ${spawn.x},${spawn.y}`);option.value=spawn.id;return option;}));startSpawn.value=worldDraft.start.spawn;
+  const links=worldDraft.connections.map((link,index)=>{const destination=byId.get(link.to.map)?.recipe.playerSpawns.find(spawn=>spawn.id===link.to.spawn),position=destination?` @ ${destination.x},${destination.y}`:'',row=element('div','world-link'),label=element('span','',`${link.from.map} / ${link.from.portal}  →  ${link.to.map} / ${link.to.spawn}${position}`),remove=element('button','','Remove');remove.onclick=()=>{worldDraft.connections.splice(index,1);worldDirty=true;renderWorldGraph();};row.append(label,remove);return row;});
+  $('world-links').replaceChildren(...links);const error=worldValidation(),portalCount=maps.reduce((total,entry)=>total+mapPortalIds(entry).length,0),unconnected=portalCount-used.size;$('world-status').textContent=worldPending?`Choose a destination Player Spawn for ${worldPending}.`:error||`${maps.length} regions · ${worldDraft.connections.length} transitions${unconnected?` · ${unconnected} unconnected Portal${unconnected===1?'':'s'}`:' · all Portals connected'}`;$('save-world').disabled=Boolean(error);
+}
+$('world-start').onchange=()=>{worldDraft.start.map=$('world-start').value;worldDraft.start.spawn=mapPlayerSpawnIds(effectiveWorldMaps().find(entry=>entry.id===worldDraft.start.map))[0];worldDirty=true;renderWorldGraph();};
+$('world-start-spawn').onchange=()=>{worldDraft.start.spawn=$('world-start-spawn').value;worldDirty=true;renderWorldGraph();};
+$('world-map').onclick=()=>{resetWorldDraft();renderWorldGraph();$('world-dialog').showModal();};
+$('close-world').onclick=()=>{if(!worldDirty||window.confirm('Discard unsaved world-map changes?'))$('world-dialog').close();};
+$('save-world').onclick=async()=>{
+  const error=worldValidation();if(error){$('world-status').textContent=error;return;}if(dirty&&currentId===null){$('world-status').textContent='Save this new map before adding it to the world.';return;}
+  const next=clone(library);if(dirty&&currentId!==null){const index=next.maps.findIndex(entry=>entry.id===currentId);next.maps[index]={id:currentId,includeInGame,recipe:clone(recipe)};}next.world=clone(worldDraft);reconcileWorld(next);
+  try{const response=await fetch('/api/library',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:libraryRevision,library:next})}),result=await response.json();if(!response.ok)throw new Error(result.error||`Save failed (${response.status}).`);library=result.library;libraryRevision=result.revision;worldDirty=false;
+    if(currentId!==null){currentEntry=library.maps.find(entry=>entry.id===currentId);recipe=normalizePlacements(clone(currentEntry.recipe));includeInGame=currentEntry.includeInGame;dirty=false;localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');resetEditorState();render();}
+    resetWorldDraft();renderWorldGraph();$('world-status').textContent='World routes saved to maps/map-library.json.';
+  }catch(saveError){$('world-status').textContent=saveError.message;}
+};
 document.querySelector('.section-label span').textContent=schema.operations.length;
 syncMaterialCatalog();
 schema.operations.forEach(op=>{
   const button=element('button',op.kind);button.append(element('span','',op.kind==='field'?'≈':op.id==='world'?'↗':'+'),document.createTextNode(op.name));
   button.onclick=()=>{
-    if(recipe.nodes.length>=32){message('This recipe already has 32 nodes.','error');return;}
+    if(recipe.nodes.length>=MAX_NODES){message(`This recipe already has ${MAX_NODES} nodes.`,'error');return;}
     change(()=>{
       const id=Math.max(0,...recipe.nodes.map(n=>n.id))+1,n=makeNode(schema,op.id,id,35+recipe.nodes.length%3*220,45+Math.floor(recipe.nodes.length/3)*190);
       for(const [port,expected] of Object.entries(op.inputs)) {
@@ -820,7 +948,7 @@ schema.operations.forEach(op=>{
       recipe.nodes.push(n);selected=id;$('view').value='selected';
       if(op.kind==='world')recipe.output=id;
       if(op.id==='materials'){recipe.version=Math.max(2,recipe.version);recipe.materialOutput=id;}
-      if(op.id==='spawns'){recipe.version=4;recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.spawnOutput=id;}
+      if(op.id==='spawns'){recipe.version=Math.max(4,recipe.version);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.spawnOutput=id;}
       if(op.id==='decoration'){recipe.version=Math.max(3,recipe.version);recipe.decorationOutput=id;}
     });
     const added=recipe.nodes.at(-1);panX=$('graph').clientWidth/2-((Number(added.x)||0)+95)*zoom;panY=$('graph').clientHeight/2-((Number(added.y)||0)+70)*zoom;renderGraph();
@@ -859,7 +987,7 @@ $('graph').addEventListener('pointerdown',event=>{
 $('recipe-name').onchange=()=>change(()=>{recipe.name=$('recipe-name').value.trim();},false);
 $('seed').onchange=()=>{const input=$('seed');if(!input.validity.valid||input.value===''){input.value=recipe.seed;return;}change(()=>{recipe.seed=Number(input.value);},false);};
 $('random-seed').onclick=()=>change(()=>{recipe.seed=crypto.getRandomValues(new Uint32Array(1))[0];});
-$('view').onchange=schedule;$('layer').onchange=schedule;$('show-spawns').onchange=schedule;
+$('view').onchange=()=>{renderPlacementControls();schedule();};$('layer').onchange=schedule;$('show-spawns').onchange=schedule;
 $('pin-settings').onclick=()=>{pinnedSettings=pinnedSettings===null?selected:null;iteration=null;renderGraph();renderInspector();schedule();};
 $('duplicate').onclick=()=>change(()=>{
   const n=clone(recipe.nodes.find(n=>n.id===settingsNodeId()));n.id=Math.max(...recipe.nodes.map(n=>n.id))+1;n.label+=' copy';n.x+=30;n.y+=160;
@@ -878,7 +1006,7 @@ $('delete').onclick=()=>change(()=>{
 });
 $('set-output').onclick=()=>change(()=>{const type=recipe.nodes.find(n=>n.id===selected).type;
   if(type==='materials'){recipe.materialOutput=selected;recipe.version=Math.max(2,recipe.version);}
-  else if(type==='spawns'){recipe.spawnOutput=selected;recipe.version=4;recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);}
+  else if(type==='spawns'){recipe.spawnOutput=selected;recipe.version=Math.max(4,recipe.version);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);}
   else if(type==='decoration'){recipe.decorationOutput=selected;recipe.version=Math.max(3,recipe.version);}
   else recipe.output=selected;$('view').value='final';});
 function download(blob,name){const url=URL.createObjectURL(blob),a=element('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
@@ -913,18 +1041,47 @@ $('render-map').onclick=()=>{
     $('render-image').removeAttribute('src');$('render-status').textContent='Rendering full map…';$('render-dialog').showModal();
     const spawnProgram=recipe.spawnOutput==null?null:compile(previewRecipe,schema,recipe.spawnOutput).program;
     const decorationProgram=recipe.decorationOutput==null?null:compile(previewRecipe,schema,recipe.decorationOutput).program;
-    worker.postMessage({id:renderRequest,render:true,mapId:currentId,program:world.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,showSpawns:$('show-spawns').checked,seed:recipe.seed});
+    worker.postMessage({id:renderRequest,render:true,mapId:currentId,program:world.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,portals:recipe.portals,playerSpawns:recipe.playerSpawns,showSpawns:$('show-spawns').checked,seed:recipe.seed});
   }catch(error){message(error.message,'error');}
 };
 $('close-render').onclick=()=>$('render-dialog').close();
 $('save-render').onclick=()=>{if(renderBlob)download(renderBlob,`dustline-world-${renderSeed}-8192.png`);};
 $('render-zoom').onchange=()=>{$('render-image').style.width=$('render-zoom').value==='fit'?'':`${8192*Number($('render-zoom').value)}px`;$('render-image').classList.toggle('actual-size',$('render-zoom').value!=='fit');};
 $('preview').onclick=event=>{
-  if($('view').value!=='seeds'||!lastResponse)return;
   const rect=$('preview').getBoundingClientRect(),x=(event.clientX-rect.left)/rect.width,y=(event.clientY-rect.top)/rect.height;
+  if($('view').value==='placements')return;
+  if($('view').value!=='seeds'||!lastResponse)return;
   const output=lastResponse.outputs[Math.min(2,Math.floor(y*3))*3+Math.min(2,Math.floor(x*3))];
   if(output)change(()=>{recipe.seed=output.seed;$('view').value='final';});
 };
+$('add-portal').onclick=()=>{placementAddKind=placementAddKind==='portal'?null:'portal';message(placementAddKind?'Click the schematic to place the Portal.':'Portal placement cancelled.');};
+$('add-player-spawn').onclick=()=>{placementAddKind=placementAddKind==='spawn'?null:'spawn';message(placementAddKind?'Click the schematic to place the Player Spawn.':'Player Spawn placement cancelled.');};
+$('placement-list').onchange=()=>{placementSelection=$('placement-list').value||null;renderPlacementControls();if(lastResponse)draw(lastResponse);};
+$('placement-focus').onclick=focusPlacement;
+$('placement-fit').onclick=()=>{placementZoom=1;placementPanX=placementPanY=0;if(lastResponse)draw(lastResponse);};
+function previewPoint(event){const rect=$('preview').getBoundingClientRect();return {x:(event.clientX-rect.left)/rect.width*640,y:(event.clientY-rect.top)/rect.height*640};}
+$('preview').addEventListener('wheel',event=>{
+  if($('view').value!=='placements')return;event.preventDefault();const point=previewPoint(event),next=Math.max(1,Math.min(16,placementZoom*(event.deltaY<0?1.25:.8))),worldX=(point.x-placementPanX)/placementZoom,worldY=(point.y-placementPanY)/placementZoom;placementPanX=point.x-worldX*next;placementPanY=point.y-worldY*next;placementZoom=next;if(lastResponse)draw(lastResponse);
+},{passive:false});
+$('preview').addEventListener('pointerdown',event=>{
+  if($('view').value!=='placements'||event.button!==0)return;event.preventDefault();const point=previewPoint(event);
+  if(placementAddKind){const kind=placementAddKind;placementAddKind=null;addPlacement(kind,placementWorld(point.x,point.y));return;}
+  let hit=null,mode='move';for(const value of placementItems().reverse()){
+    const center=placementScreen(value.item.x,value.item.y),distance=Math.hypot(point.x-center.x,point.y-center.y);if(value.kind==='spawn'){
+      const angle=(value.item.heading-90)*Math.PI/180,tip={x:center.x+Math.cos(angle)*22,y:center.y+Math.sin(angle)*22};if(Math.hypot(point.x-tip.x,point.y-tip.y)<9){hit=value;mode='rotate';break;}
+    }if(distance<14){hit=value;break;}
+  }
+  if(hit){placementSelection=placementKey(hit.kind,hit.item.id);renderPlacementControls();placementDrag={mode,item:hit.item,kind:hit.kind,start:point,origin:{x:hit.item.x,y:hit.item.y},remembered:false};}
+  else placementDrag={mode:'pan',start:point,origin:{x:placementPanX,y:placementPanY},remembered:false};
+  $('placement-viewport').classList.add('dragging');if(lastResponse)draw(lastResponse);
+});
+window.addEventListener('pointermove',event=>{
+  if(!placementDrag)return;const point=previewPoint(event),drag=placementDrag;if(drag.mode==='pan'){placementPanX=drag.origin.x+point.x-drag.start.x;placementPanY=drag.origin.y+point.y-drag.start.y;}
+  else {if(!drag.remembered){remember();drag.remembered=true;}if(drag.mode==='move'){const world=placementWorld(point.x,point.y);drag.item.x=world.x;drag.item.y=world.y;}else {const center=placementScreen(drag.item.x,drag.item.y);drag.item.heading=(Math.round(Math.atan2(point.y-center.y,point.x-center.x)*180/Math.PI+90)+360)%360;}}
+  if(lastResponse)draw(lastResponse);
+});
+function finishPlacementDrag(){if(!placementDrag)return;const changed=placementDrag.remembered;placementDrag=null;$('placement-viewport').classList.remove('dragging');if(changed){recipe.version=6;save();renderPlacementControls();schedule();}}
+window.addEventListener('pointerup',finishPlacementDrag);window.addEventListener('pointercancel',finishPlacementDrag);
 $('help').onclick=()=>$('guide').showModal();$('close-guide').onclick=()=>$('guide').close();
 window.addEventListener('keydown',event=>{
   if(event.key==='Escape'){if(cancelConnectionDrag)cancelConnectionDrag();else {pending=null;renderGraph();}}

@@ -94,6 +94,8 @@ def run():
     t.check('Town race remains ready until the player leaves town',t.state()['mode']==4 and
             accepted['kind']==1 and accepted['phase']==1,accepted)
     t.step(t.LEFT,24);t.step(t.DOWN,140);t.tap(t.DOWN);t.tap(t.A);t.step(0,20)
+    if t.state()['mode']==4 and t.town_state()['prompt']:
+        t.tap(t.A);t.step(0,20)
     road_start=t.race_state();t.capture('races/town-race-start')
     t.check('Leaving town starts the road-race countdown toward an outer outpost',
             t.state()['mode']==1 and road_start['kind']==1 and road_start['phase']==2 and

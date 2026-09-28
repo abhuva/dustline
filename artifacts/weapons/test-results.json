@@ -1,8 +1,8 @@
 {
-  "rom_sha256": "a9a5f34806b8755bfccc1e0c625679dbadaec23b1802f0f6137c6076c5c6ad75",
+  "rom_sha256": "5715d85cedddc01ece529909ce83ea048c2497e21b88178462d7fcaad03e730a",
   "checks": [
     {
-      "name": "R fires the fitted front gun and both side guns together",
+      "name": "R fires a purchased front gun and both purchased side guns together",
       "passed": true,
       "details": {
         "selected": 2,
@@ -12,7 +12,7 @@
         "guidance": 0,
         "explosions": 0,
         "mask": 13,
-        "settings_panel": 0,
+        "settings_panel": 3,
         "garage_slot": 0,
         "car_type": 0,
         "energy": 98,
@@ -22,9 +22,17 @@
           0,
           2,
           0,
+          0,
+          0,
+          0,
+          0,
           0
         ],
         "hits": [
+          0,
+          0,
+          0,
+          0,
           0,
           0,
           0,
@@ -106,7 +114,7 @@
       }
     },
     {
-      "name": "The side mount fires in opposite perpendicular directions",
+      "name": "The broadside mount fires in opposite perpendicular directions",
       "passed": true,
       "details": [
         {
@@ -134,7 +142,7 @@
         "guidance": 0,
         "explosions": 0,
         "mask": 13,
-        "settings_panel": 0,
+        "settings_panel": 3,
         "garage_slot": 0,
         "car_type": 0,
         "energy": 98,
@@ -144,10 +152,18 @@
           0,
           2,
           0,
+          0,
+          0,
+          0,
+          0,
           0
         ],
         "hits": [
           1,
+          0,
+          0,
+          0,
+          0,
           0,
           0,
           0,
@@ -238,7 +254,7 @@
         "guidance": 0,
         "explosions": 0,
         "mask": 13,
-        "settings_panel": 0,
+        "settings_panel": 3,
         "garage_slot": 0,
         "car_type": 0,
         "energy": 92,
@@ -248,9 +264,17 @@
           0,
           0,
           1,
+          0,
+          0,
+          0,
+          0,
           0
         ],
         "hits": [
+          0,
+          0,
+          0,
+          0,
           0,
           0,
           0,
@@ -332,7 +356,7 @@
       }
     },
     {
-      "name": "The default garage missile launches straight, then acquires a target",
+      "name": "The purchased missile launches straight, then acquires a target",
       "passed": true,
       "details": {
         "missile": {
@@ -354,7 +378,7 @@
           "guidance": 1,
           "explosions": 0,
           "mask": 13,
-          "settings_panel": 0,
+          "settings_panel": 3,
           "garage_slot": 0,
           "car_type": 0,
           "energy": 92,
@@ -364,9 +388,17 @@
             0,
             0,
             1,
+            0,
+            0,
+            0,
+            0,
             0
           ],
           "hits": [
+            0,
+            0,
+            0,
+            0,
             0,
             0,
             0,
@@ -449,11 +481,676 @@
       }
     },
     {
+      "name": "R groups the long sniper with the side-slot twin forward shooter",
+      "passed": true,
+      "details": {
+        "weapon": {
+          "selected": 8,
+          "saw": false,
+          "saw_x": 0.0,
+          "saw_y": 0.0,
+          "guidance": 0,
+          "explosions": 0,
+          "mask": 5,
+          "settings_panel": 3,
+          "garage_slot": 0,
+          "car_type": 0,
+          "energy": 92,
+          "max_energy": 100,
+          "shots": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            2
+          ],
+          "hits": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "front": 7,
+          "side": 8,
+          "special": 5,
+          "inventory_open": false,
+          "missiles": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            }
+          ],
+          "traps": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            }
+          ]
+        },
+        "projectiles": [
+          {
+            "x": 4182.0,
+            "y": 4176.0,
+            "remaining": 514,
+            "hostile": false
+          },
+          {
+            "x": 4180.0,
+            "y": 4169.0,
+            "remaining": 114,
+            "hostile": false
+          },
+          {
+            "x": 4180.0,
+            "y": 4183.0,
+            "remaining": 114,
+            "hostile": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "The side-slot forward shooter places two parallel shots along the car heading",
+      "passed": true,
+      "details": [
+        {
+          "x": 4180.0,
+          "y": 4169.0,
+          "remaining": 114,
+          "hostile": false
+        },
+        {
+          "x": 4180.0,
+          "y": 4183.0,
+          "remaining": 114,
+          "hostile": false
+        }
+      ]
+    },
+    {
+      "name": "The high-damage sniper has a deliberately slow 75-frame firing interval",
+      "passed": true,
+      "details": {
+        "selected": 8,
+        "saw": false,
+        "saw_x": 0.0,
+        "saw_y": 0.0,
+        "guidance": 0,
+        "explosions": 0,
+        "mask": 5,
+        "settings_panel": 3,
+        "garage_slot": 0,
+        "car_type": 0,
+        "energy": 80,
+        "max_energy": 100,
+        "shots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          10
+        ],
+        "hits": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "front": 7,
+        "side": 8,
+        "special": 5,
+        "inventory_open": false,
+        "missiles": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "vx": 0.0,
+            "vy": 0.0,
+            "remaining": 0,
+            "age": 0,
+            "target": -1,
+            "heading": 0.0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "vx": 0.0,
+            "vy": 0.0,
+            "remaining": 0,
+            "age": 0,
+            "target": -1,
+            "heading": 0.0,
+            "explosion": 0
+          }
+        ],
+        "traps": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "A sniper hit delivers enough damage to destroy a standard three-HP raider",
+      "passed": true,
+      "details": {
+        "weapon": {
+          "selected": 8,
+          "saw": false,
+          "saw_x": 0.0,
+          "saw_y": 0.0,
+          "guidance": 0,
+          "explosions": 0,
+          "mask": 5,
+          "settings_panel": 3,
+          "garage_slot": 0,
+          "car_type": 0,
+          "energy": 80,
+          "max_energy": 100,
+          "shots": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            10
+          ],
+          "hits": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0
+          ],
+          "front": 7,
+          "side": 8,
+          "special": 5,
+          "inventory_open": false,
+          "missiles": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            }
+          ],
+          "traps": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            }
+          ]
+        },
+        "combat": {
+          "magic": 1129270594,
+          "ticks": 79,
+          "hp": 100,
+          "player_hits": 2,
+          "player_shots": 11,
+          "enemy_shots": 3,
+          "hits": 1,
+          "kills": 1,
+          "wall_hits": 0,
+          "expired": 8,
+          "living": 5,
+          "bullets": 3,
+          "ram": 5304,
+          "graphics": 1,
+          "invulnerability": 0,
+          "collisions": 0,
+          "avoidance": 0,
+          "recoveries": 0,
+          "simulation_cpu": 0.19913419913419914,
+          "view_cpu": 0.07518796992481203,
+          "bumps": 0,
+          "last_bump": 0.0,
+          "player_mass": 1100,
+          "last_pair": -1,
+          "player_bumps": 0,
+          "enemies": [
+            {
+              "x": 3667.740478515625,
+              "y": 4287.54443359375,
+              "vx": 0.685302734375,
+              "vy": 0.047607421875,
+              "heading": 4.49267578125,
+              "hp": 3,
+              "collisions": 0,
+              "reverse": 0,
+              "avoidance": 0,
+              "recoveries": 0,
+              "explosion": 0,
+              "flash": 0,
+              "vehicle_senses": 0,
+              "moving_frames": 39,
+              "maneuver": 0,
+              "side": -1,
+              "mass": 750,
+              "goal_x": 0,
+              "goal_y": 0,
+              "stalled": 0,
+              "spawn_id": 40
+            },
+            {
+              "x": 4081.823486328125,
+              "y": 4202.06591796875,
+              "vx": 1.3017578125,
+              "vy": -0.436767578125,
+              "heading": 341.56494140625,
+              "hp": 3,
+              "collisions": 0,
+              "reverse": 0,
+              "avoidance": 0,
+              "recoveries": 0,
+              "explosion": 0,
+              "flash": 0,
+              "vehicle_senses": 0,
+              "moving_frames": 78,
+              "maneuver": 0,
+              "side": 1,
+              "mass": 750,
+              "goal_x": 0,
+              "goal_y": 0,
+              "stalled": 0,
+              "spawn_id": 1
+            },
+            {
+              "x": 4160.001220703125,
+              "y": 3845.393310546875,
+              "vx": 0.002197265625,
+              "vy": 1.397216796875,
+              "heading": 90.0,
+              "hp": 3,
+              "collisions": 0,
+              "reverse": 0,
+              "avoidance": 0,
+              "recoveries": 0,
+              "explosion": 0,
+              "flash": 0,
+              "vehicle_senses": 0,
+              "moving_frames": 77,
+              "maneuver": 0,
+              "side": 1,
+              "mass": 750,
+              "goal_x": 0,
+              "goal_y": 0,
+              "stalled": 0,
+              "spawn_id": 35
+            },
+            {
+              "x": 4486.27880859375,
+              "y": 4379.97607421875,
+              "vx": -1.2841796875,
+              "vy": -0.801025390625,
+              "heading": 212.003173828125,
+              "hp": 3,
+              "collisions": 0,
+              "reverse": 0,
+              "avoidance": 0,
+              "recoveries": 0,
+              "explosion": 0,
+              "flash": 0,
+              "vehicle_senses": 0,
+              "moving_frames": 77,
+              "maneuver": 0,
+              "side": 1,
+              "mass": 750,
+              "goal_x": 0,
+              "goal_y": 0,
+              "stalled": 0,
+              "spawn_id": 41
+            },
+            {
+              "x": 3939.59326171875,
+              "y": 3831.523193359375,
+              "vx": 0.778564453125,
+              "vy": 1.211181640625,
+              "heading": 57.381591796875,
+              "hp": 3,
+              "collisions": 0,
+              "reverse": 0,
+              "avoidance": 0,
+              "recoveries": 0,
+              "explosion": 0,
+              "flash": 0,
+              "vehicle_senses": 0,
+              "moving_frames": 76,
+              "maneuver": 0,
+              "side": -1,
+              "mass": 750,
+              "goal_x": 0,
+              "goal_y": 0,
+              "stalled": 0,
+              "spawn_id": 34
+            }
+          ],
+          "projectiles": [
+            {
+              "x": 4113.90966796875,
+              "y": 4191.357421875,
+              "remaining": 96,
+              "hostile": true
+            },
+            {
+              "x": 4192.0,
+              "y": 4169.0,
+              "remaining": 102,
+              "hostile": false
+            },
+            {
+              "x": 4192.0,
+              "y": 4183.0,
+              "remaining": 102,
+              "hostile": false
+            }
+          ],
+          "spawn_count": 61,
+          "spawned": 6,
+          "despawned": 0,
+          "respawn_delay": 1800,
+          "spawn_address": 33593356,
+          "spawn_stride": 12,
+          "spawn_range": 560,
+          "despawn_range": 800,
+          "shield": 18,
+          "shield_delay": 179,
+          "invincible": false
+        }
+      }
+    },
+    {
+      "name": "The sniper fires again only after its full cooldown",
+      "passed": true,
+      "details": {
+        "selected": 8,
+        "saw": false,
+        "saw_x": 0.0,
+        "saw_y": 0.0,
+        "guidance": 0,
+        "explosions": 0,
+        "mask": 5,
+        "settings_panel": 3,
+        "garage_slot": 0,
+        "car_type": 0,
+        "energy": 75,
+        "max_energy": 100,
+        "shots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          2,
+          10
+        ],
+        "hits": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0
+        ],
+        "front": 7,
+        "side": 8,
+        "special": 5,
+        "inventory_open": false,
+        "missiles": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "vx": 0.0,
+            "vy": 0.0,
+            "remaining": 0,
+            "age": 0,
+            "target": -1,
+            "heading": 0.0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "vx": 0.0,
+            "vy": 0.0,
+            "remaining": 0,
+            "age": 0,
+            "target": -1,
+            "heading": 0.0,
+            "explosion": 0
+          }
+        ],
+        "traps": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          }
+        ]
+      }
+    },
+    {
       "name": "Energy is a centered amber segmented arc along the minimap bottom",
       "passed": true,
       "details": {
-        "energy": 46,
-        "amber_pixels": 116,
+        "energy": 63,
+        "amber_pixels": 140,
         "mirrored": 425
       }
     },
@@ -468,7 +1165,7 @@
       "details": null
     },
     {
-      "name": "A new run restores the three default garage fittings and clears attacks",
+      "name": "A new run restores only the standard front gun and clears attacks",
       "passed": true,
       "details": {
         "selected": 0,
@@ -477,13 +1174,17 @@
         "saw_y": 0.0,
         "guidance": 0,
         "explosions": 0,
-        "mask": 13,
-        "settings_panel": 1,
+        "mask": 1,
+        "settings_panel": 0,
         "garage_slot": 0,
         "car_type": 0,
         "energy": 100,
         "max_energy": 100,
         "shots": [
+          0,
+          0,
+          0,
+          0,
           0,
           0,
           0,
@@ -495,11 +1196,15 @@
           0,
           0,
           0,
+          0,
+          0,
+          0,
+          0,
           0
         ],
         "front": 0,
-        "side": 2,
-        "special": 3,
+        "side": 5,
+        "special": 5,
         "inventory_open": false,
         "missiles": [
           {
@@ -575,9 +1280,9 @@
       "name": "Grouped weapon fire fits the measured driving frame budget",
       "passed": true,
       "details": {
-        "cpu": 0.7724609375,
-        "missed": 1,
-        "ram": 5064
+        "cpu": 0.84033203125,
+        "missed": 17,
+        "ram": 5304
       }
     }
   ]

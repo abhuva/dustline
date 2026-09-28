@@ -81,7 +81,9 @@ void combat_view::update(const combat::World& world,int cx,int cy,bool visible) 
         _bullets[i]->set_visible(on);
         if(on) {
             _bullets[i]->set_position(x,y);
-            _bullets[i]->set_tiles(bn::sprite_items::combat_bullet.tiles_item(),b.hostile?1:b.side?2:0);
+            const int frame=b.hostile?1:b.source==combat::Weapon::sides?2:
+                            b.source==combat::Weapon::sniper?3:0;
+            _bullets[i]->set_tiles(bn::sprite_items::combat_bullet.tiles_item(),frame);
         }
     }
     auto effect=[&](bn::sprite_ptr& sprite,int x,int y,bool active,const bn::sprite_tiles_item& tiles,int frame) {

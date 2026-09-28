@@ -64,6 +64,8 @@ public:
                                 _current.state==phase::countdown ||
                                 _current.state==phase::running; }
     int serial() const { return _serial; }
+    uint32_t map_seed() const { return _map_seed; }
+    bool restore(uint32_t map_seed,int serial);
 
 private:
     bool _road_offer(int origin,const cave_layout& layout,const road_network& roads,scratch& work);

@@ -5,6 +5,8 @@
 #include "bn_regular_bg_items_garage_interior.h"
 #include "bn_sprite_items_town_player.h"
 #include "bn_sprite_items_town_interact.h"
+#include "bn_sprite_items_shop_icons.h"
+#include "bn_sprite_items_fitting_cursor.h"
 
 namespace {
 constexpr town_scene::rect exterior_solids[]={
@@ -48,12 +50,18 @@ bool hits(const town_scene::rect (&areas)[Size],int left,int top,int right,int b
 town_scene::town_scene(int town_id,int setup) :
     _player(bn::sprite_items::town_player.create_sprite(0,0)),
     _prompt(bn::sprite_items::town_interact.create_sprite(0,0)),
+    _shop_cursor(bn::sprite_items::fitting_cursor.create_sprite(0,0,1)),
     _town_id(town_id),_menu_selection(setup) {
     _player.set_bg_priority(1);
     _player.set_z_order(-2);
     _prompt.set_bg_priority(1);
     _prompt.set_z_order(-3);
     _prompt.set_visible(false);
+    _shop_cursor.set_bg_priority(0);_shop_cursor.set_z_order(-9);_shop_cursor.set_visible(false);
+    for(int index=0;index<garage_shop::count;++index) {
+        auto icon=bn::sprite_items::shop_icons.create_sprite(-82+(index%3)*34,-19+(index/3)*32,index);
+        icon.set_bg_priority(0);icon.set_z_order(-8);icon.set_visible(false);_shop_icons.push_back(icon);
+    }
     _load(place::exterior);
 }
 
@@ -105,29 +113,46 @@ void town_scene::_refresh_sprite() {
         _prompt_ticks=0;
     }
     _prompt.set_visible(_visible && interaction && !_menu_open);
+    const bool shop_visible=_visible && _menu_open && _menu_page==1 && !_shop_info_open;
+    for(auto& icon:_shop_icons)icon.set_visible(shop_visible);
+    _shop_cursor.set_visible(shop_visible);
+    if(shop_visible)_shop_cursor.set_position(-82+(_shop_selection%3)*34,-19+(_shop_selection/3)*32);
 }
 
 town_scene::event town_scene::update(int& setup) {
     if(_menu_open) {
-        if(bn::keypad::up_pressed() || bn::keypad::down_pressed()) {
-            _menu_page=1-_menu_page;return event::redraw;
+        if(_menu_page) {
+            if(_shop_info_open) {
+                if(bn::keypad::b_pressed() || bn::keypad::r_pressed()) {
+                    _shop_info_open=false;_refresh_sprite();return event::redraw;
+                }
+                return event::none;
+            }
+            int column=_shop_selection%3,row=_shop_selection/3;
+            if(bn::keypad::left_pressed())column=(column+2)%3;
+            else if(bn::keypad::right_pressed())column=(column+1)%3;
+            else if(bn::keypad::up_pressed())row=(row+2)%3;
+            else if(bn::keypad::down_pressed())row=(row+1)%3;
+            else if(bn::keypad::r_pressed()) {_shop_info_open=true;_refresh_sprite();return event::redraw;}
+            else if(bn::keypad::a_pressed())return event::shop_purchase_requested;
+            else if(bn::keypad::b_pressed()) {_menu_page=0;_refresh_sprite();return event::redraw;}
+            else return event::none;
+            _shop_selection=row*3+column;_refresh_sprite();return event::redraw;
         }
-        if(bn::keypad::left_pressed()) {
-            if(_menu_page)_craft_selection=(_craft_selection+2)%3;else _menu_selection=(_menu_selection+2)%3;
-            return event::redraw;
+        if(bn::keypad::down_pressed() || bn::keypad::up_pressed()) {
+            _menu_page=1;_shop_info_open=false;_refresh_sprite();return event::redraw;
         }
-        if(bn::keypad::right_pressed()) {
-            if(_menu_page)_craft_selection=(_craft_selection+1)%3;else _menu_selection=(_menu_selection+1)%3;
-            return event::redraw;
-        }
+        if(bn::keypad::left_pressed()) {_menu_selection=(_menu_selection+2)%3;return event::redraw;}
+        if(bn::keypad::right_pressed()) {_menu_selection=(_menu_selection+1)%3;return event::redraw;}
         if(bn::keypad::b_pressed()) {
             _menu_open=false;
+            _refresh_sprite();
             return event::menu_closed;
         }
         if(bn::keypad::a_pressed()) {
-            if(_menu_page)return event::craft_requested;
             setup=_menu_selection;
             _menu_open=false;
+            _refresh_sprite();
             return event::setup_applied;
         }
         return event::none;
@@ -171,6 +196,7 @@ town_scene::event town_scene::update(int& setup) {
             _menu_open=true;
             _menu_selection=setup;
             _menu_page=0;
+            _shop_info_open=false;
             _walk_ticks=0;
             _refresh_sprite();
             return event::menu_opened;
@@ -193,11 +219,15 @@ void town_scene::set_visible(bool visible) {
     if(_background)_background->set_visible(visible);
     _player.set_visible(visible);
     if(visible) _refresh_sprite();
-    else _prompt.set_visible(false);
+    else {
+        _prompt.set_visible(false);_shop_cursor.set_visible(false);
+        for(auto& icon:_shop_icons)icon.set_visible(false);
+    }
 }
 
 void town_scene::suspend() {
     _visible=false;_background.reset();_player.set_visible(false);_prompt.set_visible(false);
+    _shop_cursor.set_visible(false);for(auto& icon:_shop_icons)icon.set_visible(false);
 }
 
 void town_scene::resume() {

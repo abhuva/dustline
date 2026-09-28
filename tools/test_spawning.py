@@ -150,8 +150,9 @@ def run(t):
             t.combat_state()['kills']==0 and all(p['hp']==3 and p['ready_at']==0 for p in t.spawn_state()))
     # A single deliberate shot, not just full-health survivors: damage must
     # survive despawning AND the next activation of that same encounter. R only
-    # fires the front and side mounts, so the forward target gets one gun hit.
-    assert t.weapon_state()['front']==0 and t.weapon_state()['side']==2
+    # fires the fitted mounts, so the gun-only starting loadout gives the
+    # forward target exactly one hit.
+    assert t.weapon_state()['front']==0 and t.weapon_state()['side']==5
     victim=t.combat_state()['enemies'][0]['spawn_id']
     t.step(t.R); t.step(0,24); damaged=t.spawn_state()[victim]
     t.check('Single-shot survivor records two HP on its anchor',damaged['hp']==2,damaged)

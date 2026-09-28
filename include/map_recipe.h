@@ -6,7 +6,7 @@
 // The editor compiles a DAG into this bounded instruction stream. No heap,
 // floating point, JSON parser or editor state is needed on the GBA.
 namespace mapgen {
-inline constexpr int version=1,max_nodes=32,max_buffers=6,parameter_words=64,words_per_node=5+parameter_words;
+inline constexpr int version=1,max_nodes=64,max_buffers=6,parameter_words=64,words_per_node=5+parameter_words;
 enum class op : int32_t { random, cellular, radial, threshold, combine, blend,
                          invert, largest, noise, plasma, voronoi, world,
                          field_lut, field_paint, materials, material_patches, roads,

@@ -47,6 +47,45 @@ struct road_network {
         }
     }
 
+    // Extend the generated network to an authored portal. The search starts at
+    // the portal's logical cell and stops at the first existing road, so it
+    // finds the shortest traversable connection without crossing canyon walls.
+    // Existing access branches are valid destinations for later portals.
+    bool connect_portal(const cave_layout& layout,cave_scratch& scratch,int world_x,int world_y) {
+        if(!width || layout.solid(world_x,world_y) || layout.town_solid(world_x,world_y))return false;
+        const int target_x=world_x/cave_layout::cell_size,target_y=world_y/cave_layout::cell_size;
+        if(layout.wall(target_x,target_y))return false;
+        const int target=target_y*64+target_x;
+        if(links[target])return true;
+
+        for(int i=0;i<4096;++i)scratch.work[i]=0;
+        for(int t=0;t<cave_layout::town_count;++t) {
+            auto town=layout.town(t);scratch.work[(town.y/128)*64+town.x/128]=16;
+        }
+        int head=0,tail=1,joined=-1;
+        scratch.queue[0]=uint16_t(target);scratch.work[target]|=5;
+        while(head<tail && joined<0) {
+            int at=scratch.queue[head++],x=at%64,y=at/64;
+            for(int d=0;d<4;++d) {
+                int nx=x+dx[d],ny=y+dy[d];
+                if(layout.wall(nx,ny))continue;
+                int next=ny*64+nx;
+                if((scratch.work[next]&15) || (d==0 && (scratch.work[at]&16)) ||
+                   (d==2 && (scratch.work[next]&16)))continue;
+                scratch.work[next]|=uint8_t(((d+2)%4)+1);
+                scratch.queue[tail++]=uint16_t(next);
+                if(links[next]) { joined=next;break; }
+            }
+        }
+        if(joined<0)return false;
+        int at=joined;
+        while(at!=target) {
+            int d=(scratch.work[at]&15)-1,next=at+dx[d]+dy[d]*64;
+            links[at]|=uint8_t(1<<d);links[next]|=uint8_t(1<<((d+2)%4));at=next;
+        }
+        return true;
+    }
+
     unsigned at(int x,int y) const {
         return x<0 || y<0 || x>=64 || y>=64 ? 0 : links[y*64+x];
     }

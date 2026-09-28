@@ -3,8 +3,8 @@
   "title": "Dustline Horizon",
   "bpm": 96,
   "seed": 3516874,
-  "root": 38,
-  "scale": "natural_minor",
+  "root": 26,
+  "scale": "minor_pentatonic",
   "variation": 38,
   "tracks": [
     {

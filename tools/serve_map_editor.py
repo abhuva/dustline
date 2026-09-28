@@ -1,5 +1,6 @@
 """Loopback-only map workshop server with one bounded library write API."""
 import argparse
+import importlib
 import json
 import os
 from functools import partial
@@ -7,10 +8,11 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-from compile_recipe import LIBRARY_PATH, library_revision, validate_library
+import compile_recipe
 from music_generator import MUSIC_PATH, generate as generate_music, revision as music_revision, validate_music
 
 ROOT = Path(__file__).resolve().parents[1]
+LIBRARY_PATH = compile_recipe.LIBRARY_PATH
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -30,7 +32,7 @@ class Handler(SimpleHTTPRequestHandler):
         if request_path == '/api/library':
             try:
                 data = LIBRARY_PATH.read_bytes()
-                self._json(200, {'revision': library_revision(data), 'library': json.loads(data)})
+                self._json(200, {'revision': compile_recipe.library_revision(data), 'library': json.loads(data)})
             except Exception as error:
                 self._json(500, {'error': str(error)})
             return
@@ -77,17 +79,20 @@ class Handler(SimpleHTTPRequestHandler):
             if length <= 0 or length > 1024 * 1024:
                 raise ValueError('Map library request must be between 1 byte and 1 MiB')
             request = json.loads(self.rfile.read(length))
+            # The workshop is commonly left running while its compiler changes.
+            # Reload it for each save so client and server recipe versions cannot drift.
+            compiler = importlib.reload(compile_recipe)
             current = LIBRARY_PATH.read_bytes()
-            if request.get('revision') != library_revision(current):
+            if request.get('revision') != compiler.library_revision(current):
                 self._json(409, {'error': 'The map library changed on disk. Reload before saving.'})
                 return
             library = request.get('library')
-            validate_library(library)
+            compiler.validate_library(library)
             encoded = (json.dumps(library, indent=2) + '\n').encode('utf8')
             temporary = LIBRARY_PATH.with_suffix('.json.tmp')
             temporary.write_bytes(encoded)
             os.replace(temporary, LIBRARY_PATH)
-            self._json(200, {'revision': library_revision(encoded), 'library': library})
+            self._json(200, {'revision': compiler.library_revision(encoded), 'library': library})
         except (ValueError, TypeError, json.JSONDecodeError) as error:
             self._json(400, {'error': str(error)})
         except Exception as error:

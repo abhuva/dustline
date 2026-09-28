@@ -1,0 +1,720 @@
+{
+  "rom_sha256": "1e44066dd031135a3609ef4a58198a86e7adca35807ffa388a1b9f5832d43ec6",
+  "checks": [
+    {
+      "name": "Signal overlay is absent before an owned receiver is fitted",
+      "passed": true,
+      "details": {
+        "magic": 1380009033,
+        "fitted": false,
+        "target": -1,
+        "direction": -1,
+        "strength": 0,
+        "active": 3,
+        "barrel_visible": false,
+        "indicator_visible": false,
+        "map": 0,
+        "detection_radius": 1024,
+        "desired": 3,
+        "next_respawn": -1,
+        "clock": 4,
+        "target_x": 1368,
+        "target_y": 3664,
+        "sources": [
+          {
+            "active": true,
+            "x": 1368,
+            "y": 3664
+          },
+          {
+            "active": true,
+            "x": 3792,
+            "y": 6360
+          },
+          {
+            "active": true,
+            "x": 4528,
+            "y": 5968
+          },
+          {
+            "active": false,
+            "x": 0,
+            "y": 0
+          },
+          {
+            "active": false,
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Garage radio occupies the top slot and creates a bounded random signal pool",
+      "passed": true,
+      "details": {
+        "radio": {
+          "magic": 1380009033,
+          "fitted": true,
+          "target": -1,
+          "direction": -1,
+          "strength": 0,
+          "active": 3,
+          "barrel_visible": false,
+          "indicator_visible": false,
+          "map": 0,
+          "detection_radius": 1024,
+          "desired": 3,
+          "next_respawn": -1,
+          "clock": 170,
+          "target_x": 1368,
+          "target_y": 3664,
+          "sources": [
+            {
+              "active": true,
+              "x": 1368,
+              "y": 3664
+            },
+            {
+              "active": true,
+              "x": 3792,
+              "y": 6360
+            },
+            {
+              "active": true,
+              "x": 4528,
+              "y": 5968
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            }
+          ]
+        },
+        "weapons": {
+          "selected": 0,
+          "saw": false,
+          "saw_x": 0.0,
+          "saw_y": 0.0,
+          "guidance": 0,
+          "explosions": 0,
+          "mask": 5,
+          "settings_panel": 0,
+          "garage_slot": 0,
+          "car_type": 0,
+          "energy": 100,
+          "max_energy": 100,
+          "shots": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "hits": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "front": 0,
+          "side": 2,
+          "special": 6,
+          "inventory_open": false,
+          "missiles": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            }
+          ],
+          "traps": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            }
+          ]
+        },
+        "nearest_distance": 1801.7272002413436
+      }
+    },
+    {
+      "name": "Passive radio makes L a zero-energy no-op",
+      "passed": true,
+      "details": {
+        "selected": 0,
+        "saw": false,
+        "saw_x": 0.0,
+        "saw_y": 0.0,
+        "guidance": 0,
+        "explosions": 0,
+        "mask": 5,
+        "settings_panel": 0,
+        "garage_slot": 0,
+        "car_type": 0,
+        "energy": 100,
+        "max_energy": 100,
+        "shots": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "hits": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "front": 0,
+        "side": 2,
+        "special": 6,
+        "inventory_open": false,
+        "missiles": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "vx": 0.0,
+            "vy": 0.0,
+            "remaining": 0,
+            "age": 0,
+            "target": -1,
+            "heading": 0.0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "vx": 0.0,
+            "vy": 0.0,
+            "remaining": 0,
+            "age": 0,
+            "target": -1,
+            "heading": 0.0,
+            "explosion": 0
+          }
+        ],
+        "traps": [
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          },
+          {
+            "x": 0.0,
+            "y": 0.0,
+            "remaining": 0,
+            "arm": 0,
+            "explosion": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Approaching strengthens the overlay and streams the salvage barrel",
+      "passed": true,
+      "details": {
+        "state": {
+          "magic": 1146442580,
+          "frame": 5327,
+          "mode": 1,
+          "setup": 1,
+          "x": 4503.418212890625,
+          "y": 5912.777099609375,
+          "vx": -0.468505859375,
+          "vy": -0.981201171875,
+          "heading": 64.555419921875,
+          "slip": 0.0,
+          "surface": 1,
+          "lap_frames": 4199,
+          "best": 0,
+          "laps": 0,
+          "gate": 0,
+          "collisions": 13,
+          "cpu": 0.666748046875,
+          "missed": 1,
+          "camera_x": 4493,
+          "camera_y": 5891,
+          "vblank": 0.077880859375,
+          "uploaded_bytes": 0,
+          "bg_bytes": 24576,
+          "sprite_free_bytes": 21920,
+          "map": 0,
+          "width": 8192,
+          "height": 8192,
+          "chunk": 753,
+          "tile_capacity": 192,
+          "unique_tiles": 180,
+          "renderer_working_ram_bytes": 13948,
+          "chunk_loads": 0,
+          "chunk_decodes": 0,
+          "chunk_cache_bytes": 0,
+          "minimap_x": 89,
+          "minimap_y": 46,
+          "seed": 12648431,
+          "signature": 2788965649,
+          "generations": 1,
+          "town": 0,
+          "town_x": 4416,
+          "town_y": 4176,
+          "layout_bytes": 17784,
+          "scratch_bytes": 45136,
+          "free_ewram": 176272,
+          "floor_cells": 1460,
+          "generation_updates": 401,
+          "town_visits": 1,
+          "radar_x": 4480,
+          "radar_y": 5888,
+          "radar_revisions": 127,
+          "zoom_level": 1,
+          "radar_scale": 64,
+          "loading_progress": 100,
+          "tune_acceleration": 0.052978515625,
+          "tune_max_speed": 3.199951171875,
+          "tune_grip": 0.119873046875,
+          "tune_steer": 2.89990234375,
+          "tune_mass": 1100,
+          "tune_selection": 0,
+          "tune_coast": 0.0009765625,
+          "tune_brake": 0.08984375,
+          "material_id": 2,
+          "material_kind": 2,
+          "shown_material": 2,
+          "terrain_rumble": 0.220947265625
+        },
+        "radio": {
+          "magic": 1380009033,
+          "fitted": true,
+          "target": 2,
+          "direction": 2,
+          "strength": 3,
+          "active": 3,
+          "barrel_visible": true,
+          "indicator_visible": true,
+          "map": 0,
+          "detection_radius": 1024,
+          "desired": 3,
+          "next_respawn": -1,
+          "clock": 4199,
+          "target_x": 4528,
+          "target_y": 5968,
+          "sources": [
+            {
+              "active": true,
+              "x": 1368,
+              "y": 3664
+            },
+            {
+              "active": true,
+              "x": 3792,
+              "y": 6360
+            },
+            {
+              "active": true,
+              "x": 4528,
+              "y": 5968
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "A player bullet removes the barrel, awards scrap and schedules a slow replacement",
+      "passed": true,
+      "details": {
+        "before": 500,
+        "after": 512,
+        "radio": {
+          "magic": 1380009033,
+          "fitted": true,
+          "target": 1,
+          "direction": 3,
+          "strength": 1,
+          "active": 2,
+          "barrel_visible": false,
+          "indicator_visible": true,
+          "map": 0,
+          "detection_radius": 1024,
+          "desired": 3,
+          "next_respawn": 17853,
+          "clock": 5309,
+          "target_x": 3792,
+          "target_y": 6360,
+          "sources": [
+            {
+              "active": true,
+              "x": 1368,
+              "y": 3664
+            },
+            {
+              "active": true,
+              "x": 3792,
+              "y": 6360
+            },
+            {
+              "active": false,
+              "x": 4528,
+              "y": 5968
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Normal save/load restores the receiver but starts a fresh repeatable signal pool",
+      "passed": true,
+      "details": {
+        "state": {
+          "magic": 1146442580,
+          "frame": 118,
+          "mode": 1,
+          "setup": 1,
+          "x": 4465.852783203125,
+          "y": 6005.403564453125,
+          "vx": 0.0,
+          "vy": 0.0,
+          "heading": 326.009033203125,
+          "slip": 0.0,
+          "surface": 1,
+          "lap_frames": 0,
+          "best": 0,
+          "laps": 0,
+          "gate": 0,
+          "collisions": 0,
+          "cpu": 0.297607421875,
+          "missed": 10,
+          "camera_x": 4465,
+          "camera_y": 5999,
+          "vblank": 0.028076171875,
+          "uploaded_bytes": 0,
+          "bg_bytes": 24576,
+          "sprite_free_bytes": 24160,
+          "map": 0,
+          "width": 8192,
+          "height": 8192,
+          "chunk": 753,
+          "tile_capacity": 192,
+          "unique_tiles": 180,
+          "renderer_working_ram_bytes": 13948,
+          "chunk_loads": 0,
+          "chunk_decodes": 0,
+          "chunk_cache_bytes": 0,
+          "minimap_x": 89,
+          "minimap_y": 46,
+          "seed": 12648431,
+          "signature": 2788965649,
+          "generations": 2,
+          "town": -1,
+          "town_x": 4416,
+          "town_y": 4176,
+          "layout_bytes": 17784,
+          "scratch_bytes": 45136,
+          "free_ewram": 176272,
+          "floor_cells": 1460,
+          "generation_updates": 401,
+          "town_visits": 0,
+          "radar_x": 4416,
+          "radar_y": 5952,
+          "radar_revisions": 1,
+          "zoom_level": 1,
+          "radar_scale": 64,
+          "loading_progress": 100,
+          "tune_acceleration": 0.052978515625,
+          "tune_max_speed": 3.199951171875,
+          "tune_grip": 0.119873046875,
+          "tune_steer": 2.89990234375,
+          "tune_mass": 1100,
+          "tune_selection": 0,
+          "tune_coast": 0.0009765625,
+          "tune_brake": 0.08984375,
+          "material_id": 3,
+          "material_kind": 3,
+          "shown_material": 1,
+          "terrain_rumble": 0.0
+        },
+        "radio": {
+          "magic": 1380009033,
+          "fitted": true,
+          "target": -1,
+          "direction": -1,
+          "strength": 0,
+          "active": 4,
+          "barrel_visible": false,
+          "indicator_visible": false,
+          "map": 0,
+          "detection_radius": 1024,
+          "desired": 4,
+          "next_respawn": -1,
+          "clock": 0,
+          "target_x": 5192,
+          "target_y": 7000,
+          "sources": [
+            {
+              "active": true,
+              "x": 5192,
+              "y": 7000
+            },
+            {
+              "active": true,
+              "x": 4296,
+              "y": 6608
+            },
+            {
+              "active": true,
+              "x": 3672,
+              "y": 960
+            },
+            {
+              "active": true,
+              "x": 4024,
+              "y": 2104
+            },
+            {
+              "active": false,
+              "x": 0,
+              "y": 0
+            }
+          ]
+        },
+        "weapons": {
+          "selected": 0,
+          "saw": false,
+          "saw_x": 0.0,
+          "saw_y": 0.0,
+          "guidance": 0,
+          "explosions": 0,
+          "mask": 5,
+          "settings_panel": 3,
+          "garage_slot": 0,
+          "car_type": 0,
+          "energy": 95,
+          "max_energy": 100,
+          "shots": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "hits": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "front": 0,
+          "side": 2,
+          "special": 6,
+          "inventory_open": false,
+          "missiles": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "vx": 0.0,
+              "vy": 0.0,
+              "remaining": 0,
+              "age": 0,
+              "target": -1,
+              "heading": 0.0,
+              "explosion": 0
+            }
+          ],
+          "traps": [
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            },
+            {
+              "x": 0.0,
+              "y": 0.0,
+              "remaining": 0,
+              "arm": 0,
+              "explosion": 0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

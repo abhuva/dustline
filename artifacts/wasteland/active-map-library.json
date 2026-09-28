@@ -5,10 +5,53 @@
       "id": "wasteland",
       "includeInGame": true,
       "recipe": {
-        "version": 4,
+        "version": 6,
         "name": "Wasteland",
         "seed": 12648431,
-        "artProfile": "sun",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "sun-sand",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "sun-gravel",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "sun-hardpan",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "sun-asphalt",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "dry-grass",
+              "enabled": true
+            },
+            {
+              "asset": "low-shrub",
+              "enabled": true
+            },
+            {
+              "asset": "pebbles",
+              "enabled": true
+            },
+            {
+              "asset": "dry-twigs",
+              "enabled": true
+            }
+          ],
+          "wallSet": "sun-canyon",
+          "townSet": "frontier"
+        },
         "output": 7,
         "nodes": [
           {
@@ -21,8 +64,8 @@
               47,
               2
             ],
-            "x": 35,
-            "y": 45
+            "x": 0,
+            "y": 80.82781805213901
           },
           {
             "id": 2,
@@ -51,8 +94,8 @@
             },
             "stream": 0,
             "p": [],
-            "x": 505,
-            "y": 45
+            "x": 660.2536789124798,
+            "y": 40.521569012677745
           },
           {
             "id": 4,
@@ -118,8 +161,8 @@
               160,
               3
             ],
-            "x": 740,
-            "y": 45
+            "x": 986.3158967507391,
+            "y": 22.60764574993281
           },
           {
             "id": 8,
@@ -429,6 +472,42 @@
             "energyMin": 12,
             "energyMax": 24
           }
+        ],
+        "portals": [
+          {
+            "id": "north",
+            "x": 3709,
+            "y": 300,
+            "width": 277,
+            "height": 205
+          },
+          {
+            "id": "south",
+            "x": 7030,
+            "y": 3916,
+            "width": 329,
+            "height": 186
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 3653,
+            "y": 435,
+            "heading": 180
+          },
+          {
+            "id": "south_arrival",
+            "x": 6967,
+            "y": 3781,
+            "heading": 0
+          }
         ]
       }
     },
@@ -436,10 +515,53 @@
       "id": "two-rules-radial",
       "includeInGame": true,
       "recipe": {
-        "version": 3,
+        "version": 6,
         "name": "Two rules + radial mask",
         "seed": 12648430,
-        "artProfile": "rust",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "rust-dust",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "rust-gravel",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "rust-hardpan",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "rust-asphalt",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "wire-grass",
+              "enabled": true
+            },
+            {
+              "asset": "rust-scrap",
+              "enabled": true
+            },
+            {
+              "asset": "oil-brush",
+              "enabled": true
+            },
+            {
+              "asset": "iron-shards",
+              "enabled": true
+            }
+          ],
+          "wallSet": "rust-ridge",
+          "townSet": "rustworks"
+        },
         "output": 13,
         "nodes": [
           {
@@ -677,17 +799,100 @@
         ],
         "materialOutput": 9,
         "decorationOutput": 12,
-        "spawnOutput": 14
+        "spawnOutput": 14,
+        "portals": [
+          {
+            "id": "north",
+            "x": 4036,
+            "y": 1100,
+            "width": 159,
+            "height": 172
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 4038,
+            "y": 1229,
+            "heading": 180
+          }
+        ],
+        "spawnProfiles": [
+          {
+            "id": 0,
+            "name": "Raider",
+            "color": "#ef6c5b",
+            "enemy": "raider",
+            "respawnSeconds": 30,
+            "scrapChance": 70,
+            "scrapMin": 1,
+            "scrapMax": 3,
+            "blueprint": "tuned_injector",
+            "blueprintChance": 4,
+            "energyChance": 25,
+            "energyMin": 8,
+            "energyMax": 16
+          }
+        ]
       }
     },
     {
       "id": "plasma-basin",
-      "includeInGame": true,
+      "includeInGame": false,
       "recipe": {
-        "version": 1,
+        "version": 6,
         "name": "Plasma basin",
         "seed": 12648430,
-        "artProfile": "ash",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "ash-dust",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "ash-gravel",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "ash-hardpan",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "ash-asphalt",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "ash-tuft",
+              "enabled": true
+            },
+            {
+              "asset": "cinder-shrub",
+              "enabled": true
+            },
+            {
+              "asset": "char-stones",
+              "enabled": true
+            },
+            {
+              "asset": "dead-branches",
+              "enabled": true
+            }
+          ],
+          "wallSet": "ash-cliff",
+          "townSet": "ashpost"
+        },
         "output": 6,
         "nodes": [
           {
@@ -777,17 +982,113 @@
             "x": 1334.4136415242701,
             "y": 107.01951557701275
           }
+        ],
+        "portals": [
+          {
+            "id": "north",
+            "x": 4160,
+            "y": 4032,
+            "width": 128,
+            "height": 48
+          },
+          {
+            "id": "south",
+            "x": 4160,
+            "y": 4320,
+            "width": 128,
+            "height": 48
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 4160,
+            "y": 4144,
+            "heading": 90
+          },
+          {
+            "id": "south_arrival",
+            "x": 4160,
+            "y": 4208,
+            "heading": 270
+          }
+        ],
+        "spawnProfiles": [
+          {
+            "id": 0,
+            "name": "Raider",
+            "color": "#ef6c5b",
+            "enemy": "raider",
+            "respawnSeconds": 30,
+            "scrapChance": 70,
+            "scrapMin": 1,
+            "scrapMax": 3,
+            "blueprint": "tuned_injector",
+            "blueprintChance": 4,
+            "energyChance": 25,
+            "energyMin": 8,
+            "energyMax": 16
+          }
         ]
       }
     },
     {
       "id": "voronoi-passages",
-      "includeInGame": true,
+      "includeInGame": false,
       "recipe": {
-        "version": 3,
+        "version": 6,
         "name": "Voronoi passages",
         "seed": 12648438,
-        "artProfile": "salt",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "salt-crust",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "salt-shingle",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "salt-hardpan",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "salt-road",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "salt-grass",
+              "enabled": true
+            },
+            {
+              "asset": "blue-shrub",
+              "enabled": true
+            },
+            {
+              "asset": "salt-chunks",
+              "enabled": true
+            },
+            {
+              "asset": "driftwood",
+              "enabled": true
+            }
+          ],
+          "wallSet": "salt-bluff",
+          "townSet": "salt-harbor"
+        },
         "output": 8,
         "nodes": [
           {
@@ -955,17 +1256,113 @@
           }
         ],
         "decorationOutput": 9,
-        "spawnOutput": 11
+        "spawnOutput": 11,
+        "portals": [
+          {
+            "id": "north",
+            "x": 4160,
+            "y": 4032,
+            "width": 128,
+            "height": 48
+          },
+          {
+            "id": "south",
+            "x": 4160,
+            "y": 4320,
+            "width": 128,
+            "height": 48
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 4160,
+            "y": 4144,
+            "heading": 90
+          },
+          {
+            "id": "south_arrival",
+            "x": 4160,
+            "y": 4208,
+            "heading": 270
+          }
+        ],
+        "spawnProfiles": [
+          {
+            "id": 0,
+            "name": "Raider",
+            "color": "#ef6c5b",
+            "enemy": "raider",
+            "respawnSeconds": 30,
+            "scrapChance": 70,
+            "scrapMin": 1,
+            "scrapMax": 3,
+            "blueprint": "tuned_injector",
+            "blueprintChance": 4,
+            "energyChance": 25,
+            "energyMin": 8,
+            "energyMax": 16
+          }
+        ]
       }
     },
     {
       "id": "natural-ground",
-      "includeInGame": true,
+      "includeInGame": false,
       "recipe": {
-        "version": 2,
+        "version": 6,
         "name": "Natural ground",
         "seed": 12648430,
-        "artProfile": "sun",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "sun-sand",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "sun-gravel",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "sun-hardpan",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "sun-asphalt",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "dry-grass",
+              "enabled": true
+            },
+            {
+              "asset": "low-shrub",
+              "enabled": true
+            },
+            {
+              "asset": "pebbles",
+              "enabled": true
+            },
+            {
+              "asset": "dry-twigs",
+              "enabled": true
+            }
+          ],
+          "wallSet": "sun-canyon",
+          "townSet": "frontier"
+        },
         "output": 3,
         "nodes": [
           {
@@ -1064,17 +1461,113 @@
             "y": 280
           }
         ],
-        "materialOutput": 6
+        "materialOutput": 6,
+        "portals": [
+          {
+            "id": "north",
+            "x": 4160,
+            "y": 4032,
+            "width": 128,
+            "height": 48
+          },
+          {
+            "id": "south",
+            "x": 4160,
+            "y": 4320,
+            "width": 128,
+            "height": 48
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 4160,
+            "y": 4144,
+            "heading": 90
+          },
+          {
+            "id": "south_arrival",
+            "x": 4160,
+            "y": 4208,
+            "heading": 270
+          }
+        ],
+        "spawnProfiles": [
+          {
+            "id": 0,
+            "name": "Raider",
+            "color": "#ef6c5b",
+            "enemy": "raider",
+            "respawnSeconds": 30,
+            "scrapChance": 70,
+            "scrapMin": 1,
+            "scrapMax": 3,
+            "blueprint": "tuned_injector",
+            "blueprintChance": 4,
+            "energyChance": 25,
+            "energyMin": 8,
+            "energyMax": 16
+          }
+        ]
       }
     },
     {
       "id": "town-roads",
-      "includeInGame": true,
+      "includeInGame": false,
       "recipe": {
-        "version": 2,
+        "version": 6,
         "name": "Town roads",
         "seed": 12648430,
-        "artProfile": "rust",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "rust-dust",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "rust-gravel",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "rust-hardpan",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "rust-asphalt",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "wire-grass",
+              "enabled": true
+            },
+            {
+              "asset": "rust-scrap",
+              "enabled": true
+            },
+            {
+              "asset": "oil-brush",
+              "enabled": true
+            },
+            {
+              "asset": "iron-shards",
+              "enabled": true
+            }
+          ],
+          "wallSet": "rust-ridge",
+          "townSet": "rustworks"
+        },
         "output": 7,
         "nodes": [
           {
@@ -1188,14 +1681,67 @@
             "y": 45
           }
         ],
-        "materialOutput": 6
+        "materialOutput": 6,
+        "portals": [
+          {
+            "id": "north",
+            "x": 4160,
+            "y": 4032,
+            "width": 128,
+            "height": 48
+          },
+          {
+            "id": "south",
+            "x": 4160,
+            "y": 4320,
+            "width": 128,
+            "height": 48
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 4160,
+            "y": 4144,
+            "heading": 90
+          },
+          {
+            "id": "south_arrival",
+            "x": 4160,
+            "y": 4208,
+            "heading": 270
+          }
+        ],
+        "spawnProfiles": [
+          {
+            "id": 0,
+            "name": "Raider",
+            "color": "#ef6c5b",
+            "enemy": "raider",
+            "respawnSeconds": 30,
+            "scrapChance": 70,
+            "scrapMin": 1,
+            "scrapMax": 3,
+            "blueprint": "tuned_injector",
+            "blueprintChance": 4,
+            "energyChance": 25,
+            "energyMin": 8,
+            "energyMax": 16
+          }
+        ]
       }
     },
     {
       "id": "populated-wasteland",
       "includeInGame": false,
       "recipe": {
-        "version": 3,
+        "version": 6,
         "name": "Neu draft",
         "seed": 12648451,
         "artProfile": "ash",
@@ -1556,17 +2102,69 @@
         ],
         "materialOutput": 6,
         "spawnOutput": 8,
-        "decorationOutput": 9
+        "decorationOutput": 9,
+        "portals": [],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          }
+        ]
       }
     },
     {
       "id": "twin-cities",
       "includeInGame": true,
       "recipe": {
-        "version": 3,
+        "version": 6,
         "name": "Twin Cities",
         "seed": 12648430,
-        "artProfile": "verdant-machine",
+        "artProfile": {
+          "materials": [
+            {
+              "id": 0,
+              "asset": "lush-grass",
+              "enabled": true
+            },
+            {
+              "id": 1,
+              "asset": "forest-moss",
+              "enabled": true
+            },
+            {
+              "id": 2,
+              "asset": "factory-yard",
+              "enabled": true
+            },
+            {
+              "id": 3,
+              "asset": "machine-road",
+              "enabled": true
+            }
+          ],
+          "decorations": [
+            {
+              "asset": "fern-clump",
+              "enabled": true
+            },
+            {
+              "asset": "wild-flowers",
+              "enabled": true
+            },
+            {
+              "asset": "pipe-scrap",
+              "enabled": true
+            },
+            {
+              "asset": "machine-vent",
+              "enabled": true
+            }
+          ],
+          "wallSet": "forest-works",
+          "townSet": "greenworks"
+        },
         "output": 30,
         "nodes": [
           {
@@ -1989,8 +2587,114 @@
         ],
         "materialOutput": 6,
         "spawnOutput": 8,
-        "decorationOutput": 9
+        "decorationOutput": 9,
+        "portals": [
+          {
+            "id": "north",
+            "x": 509,
+            "y": 7884,
+            "width": 255,
+            "height": 186
+          }
+        ],
+        "playerSpawns": [
+          {
+            "id": "start",
+            "x": 4160,
+            "y": 4176,
+            "heading": 0
+          },
+          {
+            "id": "north_arrival",
+            "x": 452,
+            "y": 7759,
+            "heading": 0
+          }
+        ],
+        "spawnProfiles": [
+          {
+            "id": 0,
+            "name": "Raider",
+            "color": "#ef6c5b",
+            "enemy": "raider",
+            "respawnSeconds": 30,
+            "scrapChance": 70,
+            "scrapMin": 1,
+            "scrapMax": 3,
+            "blueprint": "tuned_injector",
+            "blueprintChance": 4,
+            "energyChance": 25,
+            "energyMin": 8,
+            "energyMax": 16
+          }
+        ]
       }
     }
-  ]
+  ],
+  "world": {
+    "version": 2,
+    "start": {
+      "map": "wasteland",
+      "spawn": "start"
+    },
+    "nodes": [
+      {
+        "map": "wasteland",
+        "x": 255,
+        "y": 173
+      },
+      {
+        "map": "two-rules-radial",
+        "x": 547,
+        "y": 166
+      },
+      {
+        "map": "twin-cities",
+        "x": 0,
+        "y": 206
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "map": "twin-cities",
+          "portal": "north"
+        },
+        "to": {
+          "map": "wasteland",
+          "spawn": "south_arrival"
+        }
+      },
+      {
+        "from": {
+          "map": "wasteland",
+          "portal": "south"
+        },
+        "to": {
+          "map": "twin-cities",
+          "spawn": "north_arrival"
+        }
+      },
+      {
+        "from": {
+          "map": "wasteland",
+          "portal": "north"
+        },
+        "to": {
+          "map": "two-rules-radial",
+          "spawn": "north_arrival"
+        }
+      },
+      {
+        "from": {
+          "map": "two-rules-radial",
+          "portal": "north"
+        },
+        "to": {
+          "map": "wasteland",
+          "spawn": "south_arrival"
+        }
+      }
+    ]
+  }
 }
