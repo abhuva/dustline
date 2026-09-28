@@ -258,7 +258,7 @@ def _patch_navigation_save(path,index):
     for slot in (0,512):
         if len(data)<slot+512:continue
         magic,version,payload_size,_generation,_checksum,committed=struct.unpack_from('<IHHIII',data,slot)
-        if magic!=0x54535544 or version!=1 or committed!=0x45564153 or not 0<payload_size<=256:continue
+        if magic!=0x54535544 or version not in (1,2) or committed!=0x45564153 or not 0<payload_size<=256:continue
         payload=slot+20
         struct.pack_into('<IIIiii',data,payload,
                          _persistent_id(GAME_MAPS[index]['id']),0,0,
@@ -301,13 +301,19 @@ def patch_profile(path,scrap=500,credits=5000,owned=0,front=0,side=5,special=5):
     for slot in (0,512):
         if len(data)<slot+512:continue
         magic,version,payload_size,generation,checksum,committed=struct.unpack_from('<IHHIII',data,slot)
-        if magic!=0x54535544 or version!=1 or committed!=0x45564153 or not 0<payload_size<=256:
+        if magic!=0x54535544 or version not in (1,2) or committed!=0x45564153 or not 0<payload_size<=256:
             continue
         payload=slot+20
         struct.pack_into('<i',data,payload+78,scrap)
         struct.pack_into('<i',data,payload+159,credits)
         struct.pack_into('<BBB',data,payload+100,front,side,special)
-        struct.pack_into('<II',data,payload+179,owned,0x53484f50)
+        if version==1:
+            struct.pack_into('<II',data,payload+179,owned,0x53484f50)
+        else:
+            words=data[payload+179]
+            if not 1<=words<=4:raise RuntimeError(f'Invalid shop ownership word count {words}')
+            struct.pack_into('<I',data,payload+180,owned)
+            for index in range(1,words):struct.pack_into('<I',data,payload+180+index*4,0)
         crc=zlib.crc32(data[slot:slot+12]+data[payload:payload+payload_size])&0xffffffff
         struct.pack_into('<I',data,slot+12,crc)
         patched+=1

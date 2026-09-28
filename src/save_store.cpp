@@ -35,7 +35,8 @@ bool store::save(const game_state& value) {
 bool store::load(game_state& value) {
     refresh();
     if(_active_slot<0)return false;
-    return decode(slots[_active_slot].payload,slots[_active_slot].header.payload_size,value);
+    return decode(slots[_active_slot].header.version,slots[_active_slot].payload,
+                  slots[_active_slot].header.payload_size,value);
 }
 
 void store::erase() {

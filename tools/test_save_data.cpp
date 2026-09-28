@@ -22,7 +22,8 @@ saves::game_state example() {
     value.mission.target_y=5678;value.mission.goal=1;value.mission.reward=900;
     value.mission.contract_serial=4;value.mission.credits=1250;value.mission.completed=2;value.mission.serial=5;
     value.race_map_seed=int32_t(0x89abcdef);value.race_serial=7;
-    value.radio_collected_low=0x80000005;value.radio_collected_high=0x00000002;
+    value.shop_owned[0]=0x80000005;value.shop_owned[1]=0x00000002;
+    value.shop_ownership_present=1;
     return value;
 }
 }
@@ -36,23 +37,31 @@ int main() {
     assert(saves::decode(bytes,size,decoded));
     assert(decoded.map_id==source.map_id && decoded.x==source.x && decoded.car_type==source.car_type);
     assert(decoded.scrap==source.scrap && decoded.mission.target_spawn==17 && decoded.race_serial==7 &&
-           decoded.radio_collected_low==source.radio_collected_low &&
-           decoded.radio_collected_high==source.radio_collected_high);
+           decoded.shop_owned[0]==source.shop_owned[0] && decoded.shop_owned[1]==source.shop_owned[1] &&
+           decoded.shop_ownership_present);
 
     saves::slot_record first,second;
     auto shop=source;
     shop.front_weapon=7;shop.side_weapon=8;shop.special_weapon=6;
-    shop.radio_collected_low=0x1ff;shop.radio_collected_high=0x53484f50;
+    shop.shop_owned[0]=0x1ff;shop.shop_ownership_present=1;
     assert(saves::make_slot(shop,8,first));
     saves::game_state decoded_shop;
-    assert(saves::decode(first.payload,first.header.payload_size,decoded_shop));
+    assert(first.header.version==2);
+    assert(saves::decode(first.header.version,first.payload,first.header.payload_size,decoded_shop));
     assert(decoded_shop.front_weapon==7 && decoded_shop.side_weapon==8 &&
-           decoded_shop.special_weapon==6 && decoded_shop.radio_collected_low==0x1ff);
+           decoded_shop.special_weapon==6 && decoded_shop.shop_owned[0]==0x1ff);
 
-    // Early version-one profiles have no appended shop words and must still decode.
+    // Reconstruct both historical v1 payload lengths from the unchanged common prefix.
+    constexpr int v1_common_size=179;
     saves::game_state legacy;
-    assert(saves::decode(bytes,size-8,legacy));
-    assert(!legacy.radio_collected_low && !legacy.radio_collected_high);
+    assert(saves::decode(1,bytes,v1_common_size,legacy));
+    assert(!legacy.shop_ownership_present && !legacy.shop_owned[0]);
+    uint8_t late_v1[saves::max_payload_size]{};
+    std::memcpy(late_v1,bytes,v1_common_size);
+    const uint32_t owned=0x1ff,marker=0x53484f50;
+    std::memcpy(late_v1+v1_common_size,&owned,4);std::memcpy(late_v1+v1_common_size+4,&marker,4);
+    assert(saves::decode(1,late_v1,v1_common_size+8,legacy));
+    assert(legacy.shop_ownership_present && legacy.shop_owned[0]==owned);
 
     first=saves::slot_record();
     assert(saves::make_slot(source,4,first));
@@ -66,6 +75,10 @@ int main() {
     assert(!saves::slot_valid(corrupt) && saves::select_slot(first,corrupt)==0);
     auto wrong_version=second;++wrong_version.header.version;
     assert(!saves::slot_valid(wrong_version));
+
+    auto bad_count=second;bad_count.payload[v1_common_size]=5;
+    bad_count.header.checksum=saves::checksum(bad_count);
+    assert(!saves::slot_valid(bad_count));
 
     assert(saves::make_slot(source,0xffffffffu,first));
     assert(saves::make_slot(source,1,second));

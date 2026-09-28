@@ -260,7 +260,7 @@ int main() {
     missions::manager mission_manager;
     races::manager race_manager;
     int scrap=0,shop_notice=0;
-    uint16_t shop_owned=0;
+    garage_shop::ownership shop_owned;
     adaptive_music music;
     auto apply_audio=[&]() {
         music.set_user_volume(fixed(music_volume)/10);
@@ -292,8 +292,9 @@ int main() {
     };
 
     auto reset=[&](bool initialize_combat) {
-        if(shop_owned&(1<<1))tuning.acceleration-=fixed(0.006);
-        scrap=0;shop_notice=0;shop_owned=0;
+        if(garage_shop::owns_upgrade(shop_owned,garage_shop::upgrade::tuned_injector))
+            tuning.acceleration-=fixed(0.006);
+        scrap=0;shop_notice=0;shop_owned=garage_shop::ownership();
         radio_world.reset(wasteland::layout().seed()^
                           (uint32_t(frame)+1)*0x9e3779b9u);
         combat_world.set_salvage_magnet(false);combat_world.set_reinforced_plating(false);
@@ -410,7 +411,7 @@ int main() {
         value.master_muted=master_muted;
         for(int index=0;index<3;++index)value.best_laps[index]=best[index];
         value.laps=laps;value.scrap=scrap;value.duplicate_blueprints=0;
-        value.blueprint_mask=0;value.crafted_mask=uint8_t(shop_owned&7);
+        value.blueprint_mask=0;value.crafted_mask=garage_shop::legacy_upgrade_mask(shop_owned);
         value.hp=combat_world.player_hp;value.shield=combat_world.player_shield;
         value.energy=combat_world.player_energy;
         value.front_weapon=uint8_t(combat_world.fitted_weapon(combat::MountSlot::front));
@@ -427,8 +428,11 @@ int main() {
         saved.contract_serial=contract.serial;saved.credits=mission_manager.credits();
         saved.completed=mission_manager.completed();saved.serial=mission_manager.serial();
         value.race_map_seed=int32_t(race_manager.map_seed());value.race_serial=race_manager.serial();
-        value.radio_collected_low=shop_owned;
-        value.radio_collected_high=garage_shop::save_marker;
+        static_assert(garage_shop::ownership_word_count<=saves::shop_ownership_word_capacity,
+                      "Shop ownership exceeds the save payload capacity");
+        for(int index=0;index<garage_shop::ownership_word_count;++index)
+            value.shop_owned[index]=shop_owned.words[index];
+        value.shop_ownership_present=1;
         return value;
     };
 
@@ -453,18 +457,26 @@ int main() {
         music_volume=value.music_volume;sound_volume=value.sound_volume;master_muted=value.master_muted;
         for(int index=0;index<3;++index)best[index]=value.best_laps[index];
         laps=value.laps;scrap=value.scrap;shop_notice=0;
-        if(value.radio_collected_high==garage_shop::save_marker) {
-            shop_owned=uint16_t(value.radio_collected_low)&garage_shop::all_items_mask;
+        if(value.shop_ownership_present) {
+            shop_owned=garage_shop::ownership();
+            for(int index=0;index<garage_shop::ownership_word_count;++index)
+                shop_owned.words[index]=value.shop_owned[index];
         } else {
             // Version-one saves predate the direct-purchase shop. Preserve
             // crafted upgrades and every weapon that was already equipped.
-            shop_owned=value.crafted_mask&7;
+            shop_owned=garage_shop::ownership();
+            for(int index=0;index<3;++index)
+                if(value.crafted_mask&(1u<<index)) {
+                    for(int item=0;item<garage_shop::count;++item)
+                        if(garage_shop::catalog[item].type==garage_shop::kind::upgrade &&
+                           garage_shop::catalog[item].value==index)garage_shop::grant(shop_owned,item);
+                }
             const combat::Weapon old_weapons[3]={combat::Weapon(value.front_weapon),
                                                   combat::Weapon(value.side_weapon),
                                                   combat::Weapon(value.special_weapon)};
             for(combat::Weapon weapon:old_weapons) {
                 const int item=garage_shop::item_for_weapon(weapon);
-                if(item>=0)shop_owned|=garage_shop::item_bit(item);
+                if(item>=0)garage_shop::grant(shop_owned,item);
             }
         }
         car=driving::Car();loaded_position_adjusted=false;
@@ -508,8 +520,8 @@ int main() {
         car.heading=fixed::from_data(value.heading);
         apply_battery();
         combat_world.reset(car,true,spawn_loading_update);
-        combat_world.set_salvage_magnet(shop_owned&1);
-        combat_world.set_reinforced_plating(shop_owned&(1<<2));
+        combat_world.set_salvage_magnet(garage_shop::owns_upgrade(shop_owned,garage_shop::upgrade::salvage_magnet));
+        combat_world.set_reinforced_plating(garage_shop::owns_upgrade(shop_owned,garage_shop::upgrade::reinforced_plating));
         combat_world.fit_weapon(combat::MountSlot::front,combat::Weapon(value.front_weapon));
         combat_world.fit_weapon(combat::MountSlot::side,combat::Weapon(value.side_weapon));
         combat_world.fit_weapon(combat::MountSlot::special,combat::Weapon(value.special_weapon));
@@ -752,7 +764,8 @@ int main() {
                     }
                     else {
                         tuning=driving::setups[setup];
-                        if(shop_owned&(1<<1))tuning.acceleration+=fixed(0.006);
+                        if(garage_shop::owns_upgrade(shop_owned,garage_shop::upgrade::tuned_injector))
+                            tuning.acceleration+=fixed(0.006);
                     }
                     redraw=true;
                 }
@@ -948,15 +961,17 @@ int main() {
                     state=8;button_guard=true;redraw=true;
                 } else if(town_event==town_scene::event::shop_purchase_requested) {
                     const int id=town->shop_selection();
-                    const uint16_t bit=garage_shop::item_bit(id);
                     const auto& item=garage_shop::catalog[id];
-                    if(shop_owned&bit) {
+                    if(garage_shop::owned(shop_owned,id)) {
                         shop_notice=2;bn::sound_items::bump.play(fixed(0.2));
                     } else if(scrap>=item.scrap && mission_manager.spend_credits(item.credits)) {
-                        scrap-=item.scrap;shop_owned|=bit;shop_notice=1;
-                        if(id==0)combat_world.set_salvage_magnet(true);
-                        else if(id==1)tuning.acceleration+=fixed(0.006);
-                        else if(id==2)combat_world.set_reinforced_plating(true);
+                        scrap-=item.scrap;garage_shop::grant(shop_owned,id);shop_notice=1;
+                        if(item.type==garage_shop::kind::upgrade) {
+                            const auto effect=garage_shop::upgrade(item.value);
+                            if(effect==garage_shop::upgrade::salvage_magnet)combat_world.set_salvage_magnet(true);
+                            else if(effect==garage_shop::upgrade::tuned_injector)tuning.acceleration+=fixed(0.006);
+                            else if(effect==garage_shop::upgrade::reinforced_plating)combat_world.set_reinforced_plating(true);
+                        }
                         bn::sound_items::chime.play(fixed(0.5));
                     } else {
                         shop_notice=3;bn::sound_items::bump.play(fixed(0.2));
@@ -966,7 +981,10 @@ int main() {
                            town_event==town_scene::event::setup_applied) {
                     overlay.reset();town->set_visible(true);redraw=true;
                     if(town_event==town_scene::event::setup_applied) {
-                        tuning=driving::setups[setup];if(shop_owned&(1<<1))tuning.acceleration+=fixed(0.006);apply_battery();
+                        tuning=driving::setups[setup];
+                        if(garage_shop::owns_upgrade(shop_owned,garage_shop::upgrade::tuned_injector))
+                            tuning.acceleration+=fixed(0.006);
+                        apply_battery();
                         bn::sound_items::chime.play(fixed(0.4));
                     }
                 } else if(town_event==town_scene::event::redraw) {
@@ -1773,7 +1791,7 @@ int main() {
         dustline_town_telemetry[9]=town&&town->player_visible();
         dustline_progression_telemetry[0]=0x50524752;
         dustline_progression_telemetry[1]=scrap;
-        dustline_progression_telemetry[2]=shop_owned;
+        dustline_progression_telemetry[2]=shop_owned.words[0];
         dustline_progression_telemetry[3]=shop_notice;
         dustline_progression_telemetry[4]=0;
         dustline_progression_telemetry[5]=combat_world.collected_scrap;

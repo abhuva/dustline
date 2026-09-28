@@ -8,10 +8,12 @@ namespace saves {
 
 constexpr uint32_t magic=0x54535544; // "DUST" in little endian.
 constexpr uint32_t committed_magic=0x45564153; // "SAVE".
-constexpr uint16_t format_version=1;
+constexpr uint16_t legacy_format_version=1;
+constexpr uint16_t format_version=2;
 constexpr int max_payload_size=256;
 constexpr int slot_size=512;
 constexpr int slot_count=2;
+constexpr int shop_ownership_word_capacity=4;
 
 struct mission_state {
     int32_t map_seed=0;
@@ -37,9 +39,11 @@ struct game_state {
     uint8_t front_weapon=0,side_weapon=5,special_weapon=5;
     mission_state mission;
     int32_t race_map_seed=0,race_serial=0;
-    // Version-one extension: direct-purchase shop ownership and its marker.
-    // Keeping these words in place preserves compatibility with early saves.
-    uint32_t radio_collected_low=0,radio_collected_high=0;
+    // Version two stores a counted immutable-save-ID bitset. The presence flag
+    // is set by both v2 and marked late-v1 profiles; early v1 saves migrate
+    // their crafted/equipped items in the gameplay layer.
+    uint32_t shop_owned[shop_ownership_word_capacity]{};
+    uint8_t shop_ownership_present=0;
 };
 
 struct slot_header {
@@ -61,7 +65,10 @@ static_assert(sizeof(slot_header)==20,"Unexpected save header layout");
 static_assert(sizeof(slot_record)==slot_size,"Unexpected save slot layout");
 
 int encode(const game_state& source,uint8_t* destination,int capacity);
-bool decode(const uint8_t* source,int size,game_state& destination);
+bool decode(uint16_t version,const uint8_t* source,int size,game_state& destination);
+inline bool decode(const uint8_t* source,int size,game_state& destination) {
+    return decode(format_version,source,size,destination);
+}
 bool valid(const game_state& value);
 uint32_t checksum(const slot_record& slot);
 bool slot_valid(const slot_record& slot);

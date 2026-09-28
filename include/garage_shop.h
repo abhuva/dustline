@@ -4,15 +4,38 @@
 
 namespace garage_shop {
 
-inline constexpr uint16_t all_items_mask=uint16_t((1u<<count)-1);
-inline constexpr uint32_t save_marker=0x53484f50; // "SHOP"
+inline constexpr int ownership_word_count=max_save_id/32+1;
+struct ownership {
+    uint32_t words[ownership_word_count]{};
+};
 
-constexpr uint16_t item_bit(int index) { return uint16_t(1u<<index); }
-constexpr bool owned(uint16_t mask,int index) { return (mask&item_bit(index))!=0; }
+inline bool owned_save_id(const ownership& value,int save_id) {
+    return save_id>=0 && save_id<=max_save_id &&
+           (value.words[save_id/32]&(uint32_t(1)<<unsigned(save_id%32)))!=0;
+}
+inline bool owned(const ownership& value,int index) {
+    return index>=0 && index<count && owned_save_id(value,catalog[index].save_id);
+}
+inline void grant_save_id(ownership& value,int save_id) {
+    if(save_id>=0 && save_id<=max_save_id)value.words[save_id/32]|=uint32_t(1)<<unsigned(save_id%32);
+}
+inline void grant(ownership& value,int index) {
+    if(index>=0 && index<count)grant_save_id(value,catalog[index].save_id);
+}
+inline bool owns_upgrade(const ownership& value,upgrade candidate) {
+    for(int index=0;index<count;++index)
+        if(catalog[index].type==kind::upgrade && catalog[index].value==int(candidate))return owned(value,index);
+    return false;
+}
+inline uint8_t legacy_upgrade_mask(const ownership& value) {
+    uint8_t result=0;
+    for(int index=0;index<3;++index)if(owns_upgrade(value,upgrade(index)))result|=uint8_t(1u<<index);
+    return result;
+}
 
-inline uint16_t weapon_mask(uint16_t shop_mask) {
+inline uint16_t weapon_mask(const ownership& shop_owned) {
     uint16_t result=uint16_t(1u<<int(combat::Weapon::gun));
-    for(int index=0;index<count;++index)if(owned(shop_mask,index) && catalog[index].type==kind::weapon)
+    for(int index=0;index<count;++index)if(owned(shop_owned,index) && catalog[index].type==kind::weapon)
         result|=uint16_t(1u<<catalog[index].value);
     return result;
 }

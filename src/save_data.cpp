@@ -80,11 +80,13 @@ int encode(const game_state& source,uint8_t* destination,int capacity) {
     out.u8(source.front_weapon);out.u8(source.side_weapon);out.u8(source.special_weapon);
     write_mission(out,source.mission);
     out.s32(source.race_map_seed);out.s32(source.race_serial);
-    out.u32(source.radio_collected_low);out.u32(source.radio_collected_high);
+    out.u8(shop_ownership_word_capacity);
+    for(uint32_t word:source.shop_owned)out.u32(word);
     return out.ok()?out.size():-1;
 }
 
-bool decode(const uint8_t* source,int size,game_state& destination) {
+bool decode(uint16_t version,const uint8_t* source,int size,game_state& destination) {
+    if(version!=legacy_format_version && version!=format_version)return false;
     if(size<=0 || size>max_payload_size)return false;
     game_state value;reader in(source,size);
     value.map_id=in.u32();value.map_seed=in.u32();value.map_signature=in.u32();value.catalog_signature=in.u32();
@@ -100,11 +102,20 @@ bool decode(const uint8_t* source,int size,game_state& destination) {
     value.front_weapon=in.u8();value.side_weapon=in.u8();value.special_weapon=in.u8();
     read_mission(in,value.mission);
     value.race_map_seed=in.s32();value.race_serial=in.s32();
-    // Early version-one saves ended here. The appended words now hold shop
-    // ownership plus a marker, but remain optional so both layouts load.
-    if(in.remaining()==8) {
-        value.radio_collected_low=in.u32();value.radio_collected_high=in.u32();
-    } else if(in.remaining()!=0)return false;
+    if(version==legacy_format_version) {
+        // Early version-one saves ended here. Late v1 saves appended the low
+        // ownership word and "SHOP" marker.
+        if(in.remaining()==8) {
+            value.shop_owned[0]=in.u32();
+            value.shop_ownership_present=in.u32()==0x53484f50;
+            if(!value.shop_ownership_present)value.shop_owned[0]=0;
+        } else if(in.remaining()!=0)return false;
+    } else {
+        const int words=in.u8();
+        if(words<1 || words>shop_ownership_word_capacity || in.remaining()!=words*4)return false;
+        for(int index=0;index<words;++index)value.shop_owned[index]=in.u32();
+        value.shop_ownership_present=1;
+    }
     if(!in.done() || !valid(value))return false;
     destination=value;return true;
 }
@@ -145,9 +156,10 @@ uint32_t checksum(const slot_record& slot) {
 
 bool slot_valid(const slot_record& slot) {
     if(slot.header.committed!=committed_magic || slot.header.magic!=magic ||
-       slot.header.version!=format_version || !slot.header.payload_size ||
+       (slot.header.version!=legacy_format_version && slot.header.version!=format_version) ||
+       !slot.header.payload_size ||
        slot.header.payload_size>max_payload_size || slot.header.checksum!=checksum(slot))return false;
-    game_state decoded;return decode(slot.payload,slot.header.payload_size,decoded);
+    game_state decoded;return decode(slot.header.version,slot.payload,slot.header.payload_size,decoded);
 }
 
 bool make_slot(const game_state& source,uint32_t generation,slot_record& destination) {

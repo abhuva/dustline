@@ -188,7 +188,7 @@ def run(t):
         for slot in range(2):
             base=slot*512
             magic,version,payload_size,generation,_checksum,committed=struct.unpack_from('<IHHIII',data,base)
-            if magic==0x54535544 and version==1 and 0<payload_size<=256 and committed==0x45564153:
+            if magic==0x54535544 and version in (1,2) and 0<payload_size<=256 and committed==0x45564153:
                 records.append((generation,base,payload_size))
         assert records
         _generation,base,payload_size=max(records)
@@ -224,7 +224,7 @@ def run(t):
     saved=t.save_state();t.capture('settings/save-data')
     t.check('Save Game commits the first versioned SRAM generation',
             saved['valid'] and saved['generation']==1 and saved['result']==1 and
-            saved['version']==1 and saved['slot_size']==512,saved)
+            saved['version']==2 and saved['slot_size']==512,saved)
     t.tap(t.A);alternated=t.save_state()
     t.check('A second save advances onto the redundant SRAM copy',
             alternated['valid'] and alternated['generation']==2 and alternated['result']==1,alternated)
