@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "openingCells": 3,
+  "approachDepthCells": 4,
+  "triggerWidth": 384,
+  "triggerDepth": 192,
+  "arrivalInset": 448
+}

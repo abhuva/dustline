@@ -18,6 +18,19 @@ AUDIO = ROOT / "audio"
 for folder in (GFX, GEN, AUDIO):
     folder.mkdir(parents=True, exist_ok=True)
 
+# This checked-in profile is the single source for the native and Wasm exit
+# overlay. Keep the generated C++ header out of source control with the other
+# generated assets.
+exit_profile = json.loads((ROOT / "data/cardinal-exit-profile.json").read_text())
+required_exit_profile = ("version", "openingCells", "approachDepthCells",
+                         "triggerWidth", "triggerDepth", "arrivalInset")
+if set(exit_profile) != set(required_exit_profile) or any(type(exit_profile[key]) is not int for key in required_exit_profile):
+    raise ValueError("Invalid cardinal exit profile")
+(GEN / "cardinal_exit_profile.h").write_text(
+    "#pragma once\nnamespace cardinal_exit_profile {\n" +
+    "".join(f"inline constexpr int {key}={exit_profile[key]};\n" for key in required_exit_profile) +
+    "}\n")
+
 # Index zero is transparent on GBA. Every background uses this same palette.
 PALETTE = [
     (12, 20, 28), (24, 35, 43), (39, 51, 57), (57, 69, 70),

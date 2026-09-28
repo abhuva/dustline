@@ -60,6 +60,10 @@ docker run --rm --mount $mount dustline-build:1 g++ -std=c++17 -O2 -Wall -Wextra
 if ($LASTEXITCODE -ne 0) { throw 'Could not compile cave generator tests.' }
 docker run --rm --mount $mount dustline-build:1 ./build/test_cave_layout
 if ($LASTEXITCODE -ne 0) { throw 'Cave connectivity test failed.' }
+docker run --rm --mount $mount dustline-build:1 g++ -std=c++17 -O2 -Wall -Wextra -Iinclude tools/test_cardinal_exit.cpp -o build/test_cardinal_exit
+if ($LASTEXITCODE -ne 0) { throw 'Could not compile cardinal exit overlay tests.' }
+docker run --rm --mount $mount dustline-build:1 ./build/test_cardinal_exit
+if ($LASTEXITCODE -ne 0) { throw 'Cardinal exit overlay tests failed.' }
 docker run --rm --mount $mount dustline-build:1 python3 tools/test_town_scene.py
 if ($LASTEXITCODE -ne 0) { throw 'Walkable town scene test failed; see artifacts/town.' }
 docker run --rm --mount $mount dustline-build:1 python3 tools/test_portals.py

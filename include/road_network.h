@@ -6,6 +6,7 @@
 struct road_network {
     uint8_t links[4096]={};
     int width=0,material=3;
+    static constexpr uint8_t reserved=16;
     static constexpr int dx[4]={0,1,0,-1},dy[4]={-1,0,1,0};
 
     void generate(const cave_layout& layout,cave_scratch& scratch,int pixels,int id,
@@ -40,7 +41,7 @@ struct road_network {
             town=layout.town(t);int at=(town.y/128)*64+town.x/128;
             while(at!=root && (scratch.work[at]&15)) {
                 int d=(scratch.work[at]&15)-1,next=at+dx[d]+dy[d]*64;
-                bool joined=links[next]!=0;
+                bool joined=(links[next]&15)!=0;
                 links[at]|=uint8_t(1<<d);links[next]|=uint8_t(1<<((d+2)%4));at=next;
                 if(joined) break;
             }
@@ -56,7 +57,7 @@ struct road_network {
         const int target_x=world_x/cave_layout::cell_size,target_y=world_y/cave_layout::cell_size;
         if(layout.wall(target_x,target_y))return false;
         const int target=target_y*64+target_x;
-        if(links[target])return true;
+        if(links[target]&15)return true;
 
         for(int i=0;i<4096;++i)scratch.work[i]=0;
         for(int t=0;t<cave_layout::town_count;++t) {
@@ -74,7 +75,7 @@ struct road_network {
                    (d==2 && (scratch.work[next]&16)))continue;
                 scratch.work[next]|=uint8_t(((d+2)%4)+1);
                 scratch.queue[tail++]=uint16_t(next);
-                if(links[next]) { joined=next;break; }
+                if(links[next]&15) { joined=next;break; }
             }
         }
         if(joined<0)return false;
@@ -87,7 +88,10 @@ struct road_network {
     }
 
     unsigned at(int x,int y) const {
-        return x<0 || y<0 || x>=64 || y>=64 ? 0 : links[y*64+x];
+        return x<0 || y<0 || x>=64 || y>=64 ? 0 : links[y*64+x]&15;
+    }
+    bool is_reserved(int x,int y) const {
+        return x>=0 && y>=0 && x<64 && y<64 && (links[y*64+x]&reserved);
     }
     bool contains(int x,int y) const {
         if(!width || x<0 || y<0 || x>=8192 || y>=8192) return false;

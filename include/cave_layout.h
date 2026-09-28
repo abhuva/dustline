@@ -144,6 +144,14 @@ public:
     int floor_count() const { return _floor_count; }
     bool fallback() const { return _fallback; }
     const uint8_t* cells() const { return _cells; }
+    void set_floor_cell(int x,int y) {
+        if(x>=0 && y>=0 && x<columns && y<columns) _cells[y*columns+x]=0;
+    }
+    void refresh_signature(uint32_t overlay_tag=0) {
+        _floor_count=0; _signature=2166136261u;
+        for(int i=0;i<count;++i) { _floor_count+=!_cells[i]; _signature=(_signature^_cells[i])*16777619u; }
+        _signature=(_signature^overlay_tag)*16777619u;
+    }
 private:
     uint8_t _cells[count]={};
     point _towns[town_count]={},_spawn={};
