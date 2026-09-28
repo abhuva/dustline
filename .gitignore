@@ -1,4 +1,6 @@
 .tools/
+.venv/
+site/
 build/
 *.elf
 *.map
