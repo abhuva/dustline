@@ -80,6 +80,13 @@ with tempfile.TemporaryDirectory() as folder:
     url = f'http://127.0.0.1:{server.server_port}/api/library'
     try:
         envelope = json.loads(urlopen(url).read())
+        preview_body = json.dumps({'mapId': 'wasteland', 'seed': 12648431,
+                                   'shopProfile': library['maps'][0]['recipe'].get('shopProfile')}).encode()
+        preview = json.loads(urlopen(Request(f'http://127.0.0.1:{server.server_port}/api/shop-preview',
+                                             data=preview_body, method='POST',
+                                             headers={'Content-Type': 'application/json'})).read())
+        assert len(preview['towns']) == 6 and all(len(town['items']) == 9 for town in preview['towns'])
+        assert preview['towns'][0]['name'] == 'SUNDER'
         updated = copy.deepcopy(envelope['library'])
         updated['maps'].append(draft)
         body = json.dumps({'revision': envelope['revision'], 'library': updated}).encode()

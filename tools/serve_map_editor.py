@@ -9,6 +9,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import compile_recipe
+import shop_catalog
 from music_generator import MUSIC_PATH, generate as generate_music, revision as music_revision, validate_music
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +94,39 @@ class Handler(SimpleHTTPRequestHandler):
             temporary.write_bytes(encoded)
             os.replace(temporary, LIBRARY_PATH)
             self._json(200, {'revision': compiler.library_revision(encoded), 'library': library})
+        except (ValueError, TypeError, json.JSONDecodeError) as error:
+            self._json(400, {'error': str(error)})
+        except Exception as error:
+            self._json(500, {'error': str(error)})
+
+    def do_POST(self):
+        if urlsplit(self.path).path != '/api/shop-preview':
+            self._json(404, {'error': 'Unknown endpoint'})
+            return
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if length <= 0 or length > 64 * 1024:
+                raise ValueError('Shop preview request must be between 1 byte and 64 KiB')
+            request = json.loads(self.rfile.read(length))
+            library = json.loads(LIBRARY_PATH.read_bytes())
+            map_ids = {entry['id'] for entry in library['maps']}
+            map_id = request.get('mapId')
+            if map_id not in map_ids:
+                raise ValueError('Shop preview references an unknown map')
+            profile = shop_catalog.normalize_profile(request.get('shopProfile'))
+            catalog = shop_catalog.load_catalog(map_ids=map_ids)
+            by_save_id = {item['saveId']: item for item in catalog['items']}
+            towns = []
+            for town in range(shop_catalog.TOWN_COUNT):
+                resolved = shop_catalog.resolve_inventory(catalog, map_id, request.get('seed'), town, profile)
+                towns.append({'index': town, 'name': shop_catalog.town_name(map_id, town),
+                              'tierCap': resolved['tierCap'],
+                              'items': [{'saveId': save_id, 'id': by_save_id[save_id]['id'],
+                                         'name': by_save_id[save_id]['name'],
+                                         'family': by_save_id[save_id]['family'],
+                                         'tier': by_save_id[save_id]['tier']}
+                                        for save_id in resolved['saveIds']]})
+            self._json(200, {'profile': profile, 'towns': towns})
         except (ValueError, TypeError, json.JSONDecodeError) as error:
             self._json(400, {'error': str(error)})
         except Exception as error:

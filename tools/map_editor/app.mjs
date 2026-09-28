@@ -25,6 +25,17 @@ function normalizedArtProfile(value){
   if(!assetCatalog.townSets.some(asset=>asset.key===value.townSet))value.townSet=assetCatalog.presets.sun.townSet;
   return value;
 }
+const defaultShopProfile=()=>({tierFloor:1,townTierRange:[1,1],stockSize:9,
+  mixWeights:{upgrade:1,front:1,side:1,top:1},townModifiers:[]});
+function normalizedShopProfile(value){
+  const result=value&&typeof value==='object'?clone(value):defaultShopProfile();
+  result.tierFloor=Number.isInteger(result.tierFloor)?result.tierFloor:1;
+  result.townTierRange=Array.isArray(result.townTierRange)&&result.townTierRange.length===2?result.townTierRange.map(Number):[1,1];
+  result.stockSize=Number.isInteger(result.stockSize)?result.stockSize:9;
+  result.mixWeights={...defaultShopProfile().mixWeights,...(result.mixWeights??{})};
+  result.townModifiers=Array.isArray(result.townModifiers)?result.townModifiers:[];
+  return result;
+}
 const libraryResponse=await fetch('/api/library');
 if(!libraryResponse.ok)throw new Error(`Could not load the map library (${libraryResponse.status}).`);
 const libraryEnvelope=await libraryResponse.json();
@@ -34,7 +45,7 @@ const ops = new Map(schema.operations.map(o => [o.id,o]));
 const savedSelection=localStorage.getItem('dustline.map-selection.v1');
 let currentId=library.maps.some(entry=>entry.id===savedSelection)?savedSelection:library.maps[0].id;
 let currentEntry=library.maps.find(entry=>entry.id===currentId);
-let recipe=normalizePlacements(clone(currentEntry.recipe)),includeInGame=currentEntry.includeInGame;recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);
+let recipe=normalizePlacements(clone(currentEntry.recipe)),includeInGame=currentEntry.includeInGame;recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);
 let selected=recipe.output??recipe.nodes[0]?.id??null,pending=null,dirty=false;
 let undo = [], redo = [], sequence = 0, ready = false, timer, lastResponse, iteration = null;
 let zoom=1,panX=0,panY=0;
@@ -46,7 +57,7 @@ let cancelConnectionDrag = null, suppressPortClick = false;
 try {
   const saved=JSON.parse(localStorage.getItem('dustline.map-draft.v1'));
   if(saved?.id===currentId&&saved.revision===libraryRevision&&saved.recipe){
-    recipe=normalizePlacements(saved.recipe);recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);includeInGame=Boolean(saved.includeInGame);selected=recipe.output??recipe.nodes[0]?.id??null;dirty=true;
+    recipe=normalizePlacements(saved.recipe);recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);includeInGame=Boolean(saved.includeInGame);selected=recipe.output??recipe.nodes[0]?.id??null;dirty=true;
   }
 } catch { /* A broken draft must never prevent opening the workshop. */ }
 const worker = new Worker('./worker.mjs', {type:'module'});
@@ -745,7 +756,7 @@ function resetEditorState(){
 function discardAllowed(){return !dirty||window.confirm('Discard unsaved changes to this map?');}
 function loadMap(id){
   const entry=library.maps.find(entry=>entry.id===id);if(!entry)return;
-  currentId=id;currentEntry=entry;recipe=normalizePlacements(clone(entry.recipe));recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);includeInGame=entry.includeInGame;dirty=false;
+  currentId=id;currentEntry=entry;recipe=normalizePlacements(clone(entry.recipe));recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);includeInGame=entry.includeInGame;dirty=false;
   localStorage.setItem('dustline.map-selection.v1',id);localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');
   resetEditorState();render();message(`Loaded ${recipe.name}.`);
 }
@@ -759,7 +770,7 @@ async function writeLibrary(next,nextId,success){
     const response=await fetch('/api/library',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:libraryRevision,library:next})});
     const result=await response.json();if(!response.ok)throw new Error(result.error||`Save failed (${response.status}).`);
     library=result.library;libraryRevision=result.revision;currentId=nextId;currentEntry=library.maps.find(entry=>entry.id===currentId);
-    recipe=normalizePlacements(clone(currentEntry.recipe));includeInGame=currentEntry.includeInGame;dirty=false;
+    recipe=normalizePlacements(clone(currentEntry.recipe));recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);includeInGame=currentEntry.includeInGame;dirty=false;
     localStorage.setItem('dustline.map-selection.v1',currentId);localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');
     resetEditorState();render();message(success);
   }catch(error){message(error.message,'error');updateMapControls();}
@@ -782,7 +793,7 @@ $('preset').onchange=()=>{const id=$('preset').value;if(discardAllowed())loadMap
 $('new-map').onclick=()=>{
   if(!discardAllowed())return;
   const name=window.prompt('Name for the new map','Untitled map')?.trim();if(!name)return;
-  currentId=null;recipe={version:7,name,seed:crypto.getRandomValues(new Uint32Array(1))[0],nodes:[],portals:[],playerSpawns:[],artProfile:normalizedArtProfile('sun'),spawnProfiles:normalizeSpawnProfiles()};includeInGame=false;dirty=true;
+  currentId=null;recipe={version:7,name,seed:crypto.getRandomValues(new Uint32Array(1))[0],nodes:[],portals:[],playerSpawns:[],artProfile:normalizedArtProfile('sun'),spawnProfiles:normalizeSpawnProfiles(),shopProfile:defaultShopProfile()};includeInGame=false;dirty=true;
   resetEditorState();save();render();message('New draft. Add nodes, then Save to add it to the shared library.');
 };
 $('save-map').onclick=()=>saveMap(false);$('save-as').onclick=()=>saveMap(true);
@@ -867,6 +878,40 @@ $('population-bank').onclick=()=>{renderPopulationDialog();$('population-dialog'
 $('close-population').onclick=()=>$('population-dialog').close();
 $('add-population').onclick=()=>{if(recipe.spawnProfiles.length>=8)return;const ids=new Set(recipe.spawnProfiles.map(profile=>profile.id));let id=0;while(ids.has(id))++id;const colors=['#ef6c5b','#65b9dc','#e4bd57','#a889d6','#79bc7b','#d77faa','#8ac6b1','#d68e5d'];change(()=>{recipe.spawnProfiles.push({id,name:`Profile ${id}`,color:colors[recipe.spawnProfiles.length],enemy:'raider',respawnSeconds:30,scrapChance:70,scrapMin:1,scrapMax:3,energyChance:25,energyMin:8,energyMax:16});recipe.version=Math.max(4,recipe.version);});renderPopulationDialog();};
 
+let shopPreviewRequest=0;
+function shopNumber(label,value,min,max,apply,disabled=false){
+  const input=element('input');input.type='number';input.min=min;input.max=max;input.step=1;input.value=value;input.disabled=disabled;input.setAttribute('aria-label',label);
+  input.onchange=()=>{if(input.validity.valid&&input.value!==''){change(()=>{apply(Number(input.value));recipe.version=7;});renderShopDialog();}};
+  return populationField(label,input);
+}
+async function requestShopPreview(){
+  const request=++shopPreviewRequest;
+  if(currentId===null){$('shop-status').textContent='Save this draft before previewing its stable region ID.';$('shop-preview').replaceChildren();return;}
+  $('shop-status').textContent='Resolving exact inventoriesâ€¦';$('shop-status').classList.remove('error');
+  try{
+    const response=await fetch('/api/shop-preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mapId:currentId,seed:recipe.seed,shopProfile:recipe.shopProfile})});
+    const result=await response.json();if(request!==shopPreviewRequest)return;if(!response.ok)throw new Error(result.error||`Preview failed (${response.status}).`);
+    $('shop-status').textContent=`${result.towns.length} towns Â· fixed for seed ${recipe.seed} Â· generation v1`;
+    const rows=result.towns.map(town=>{const row=element('section','shop-preview-town'),heading=element('header');heading.append(element('strong','',`${town.index} Â· ${town.name}`),element('span','',`TIER ${town.tierCap}`));const list=element('ol');for(const item of town.items)list.append(element('li','',`${item.name} Â· ${item.family} T${item.tier}`));row.append(heading,list);return row;});
+    $('shop-preview').replaceChildren(...rows);
+  }catch(error){if(request!==shopPreviewRequest)return;$('shop-status').textContent=error.message;$('shop-status').classList.add('error');$('shop-preview').replaceChildren();}
+}
+function renderShopDialog(){
+  recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);const profile=recipe.shopProfile,families=['upgrade','front','side','top'];
+  const base=element('div','shop-profile-grid');
+  base.append(shopNumber('Shop tier floor',profile.tierFloor,1,255,value=>profile.tierFloor=value),shopNumber('Shop tier minimum',profile.townTierRange[0],1,255,value=>profile.townTierRange[0]=value),shopNumber('Shop tier maximum',profile.townTierRange[1],1,255,value=>profile.townTierRange[1]=value),shopNumber('Shop stock size',profile.stockSize,1,9,value=>profile.stockSize=value),...families.map(family=>shopNumber(`Shop ${family} weight`,profile.mixWeights[family],0,100,value=>profile.mixWeights[family]=value)));
+  $('shop-profile-fields').replaceChildren(base);
+  const modifiers=[];
+  for(let town=0;town<6;++town){
+    const row=element('div','shop-modifier-row'),existing=profile.townModifiers.find(value=>value.town===town),enabled=element('input');enabled.type='checkbox';enabled.checked=Boolean(existing);enabled.setAttribute('aria-label',`Town ${town} override`);
+    enabled.onchange=()=>{change(()=>{if(enabled.checked)profile.townModifiers.push({town,tierOffset:0,stockDelta:0,mixWeights:{...profile.mixWeights}});else profile.townModifiers=profile.townModifiers.filter(value=>value.town!==town);recipe.version=7;});renderShopDialog();};
+    const toggle=element('label','',`Town ${town}`);toggle.append(enabled);row.append(toggle,shopNumber(`Town ${town} tier offset`,existing?.tierOffset??0,-254,254,value=>existing.tierOffset=value,!existing),shopNumber(`Town ${town} stock delta`,existing?.stockDelta??0,-9,9,value=>existing.stockDelta=value,!existing),...families.map(family=>shopNumber(`Town ${town} ${family} weight`,existing?.mixWeights?.[family]??profile.mixWeights[family],0,100,value=>{existing.mixWeights??={};existing.mixWeights[family]=value;},!existing)));modifiers.push(row);
+  }
+  $('shop-modifiers').replaceChildren(...modifiers);requestShopPreview();
+}
+$('shop-profile').onclick=()=>{renderShopDialog();$('shop-dialog').showModal();};
+$('close-shop').onclick=()=>$('shop-dialog').close();
+
 function effectiveWorldMaps(){
   return library.maps.map(entry=>entry.id===currentId&&dirty?{...entry,includeInGame,recipe}:entry).filter(entry=>entry.includeInGame);
 }
@@ -928,7 +973,7 @@ $('save-world').onclick=async()=>{
   const error=worldValidation();if(error){$('world-status').textContent=error;return;}if(dirty&&currentId===null){$('world-status').textContent='Save this new map before adding it to the world.';return;}
   const next=clone(library);if(dirty&&currentId!==null){const index=next.maps.findIndex(entry=>entry.id===currentId);next.maps[index]={id:currentId,includeInGame,recipe:clone(recipe)};}next.world=clone(worldDraft);reconcileWorld(next);
   try{const response=await fetch('/api/library',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:libraryRevision,library:next})}),result=await response.json();if(!response.ok)throw new Error(result.error||`Save failed (${response.status}).`);library=result.library;libraryRevision=result.revision;worldDirty=false;
-    if(currentId!==null){currentEntry=library.maps.find(entry=>entry.id===currentId);recipe=normalizePlacements(clone(currentEntry.recipe));includeInGame=currentEntry.includeInGame;dirty=false;localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');resetEditorState();render();}
+    if(currentId!==null){currentEntry=library.maps.find(entry=>entry.id===currentId);recipe=normalizePlacements(clone(currentEntry.recipe));recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);includeInGame=currentEntry.includeInGame;dirty=false;localStorage.setItem('dustline.recipe.v1',JSON.stringify(recipe));localStorage.removeItem('dustline.map-draft.v1');resetEditorState();render();}
     resetWorldDraft();renderWorldGraph();$('world-status').textContent='World routes saved to maps/map-library.json.';
   }catch(saveError){$('world-status').textContent=saveError.message;}
 };
@@ -1025,7 +1070,7 @@ $('import-file').onchange=async()=>{
     const imported=JSON.parse(await file.text());compile(imported,schema);
     for(const n of imported.nodes){n.x=Math.max(0,Math.min(10000,Number(n.x)||0));n.y=Math.max(0,Math.min(10000,Number(n.y)||0));n.inputs??={};n.label=String(n.label??ops.get(n.type).name).slice(0,80);}
     if(!discardAllowed())return;
-    currentId=null;recipe=imported;recipe.artProfile=normalizedArtProfile(recipe.artProfile);includeInGame=false;dirty=true;resetEditorState();save();render();
+    currentId=null;recipe=imported;recipe.artProfile=normalizedArtProfile(recipe.artProfile);recipe.spawnProfiles=normalizeSpawnProfiles(recipe.spawnProfiles);recipe.shopProfile=normalizedShopProfile(recipe.shopProfile);includeInGame=false;dirty=true;resetEditorState();save();render();
     message('Imported as a new draft. Use Save to add it to the shared library.');
   }catch(error){message(`Import failed: ${error.message}`,'error');}
   $('import-file').value='';

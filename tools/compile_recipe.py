@@ -344,8 +344,6 @@ def validate_library(library, compile_maps=True):
             raise ValueError(f'Map {map_id}: {error}') from error
         try:
             shop_profile = normalize_shop_profile(recipe.get('shopProfile'))
-            if 'shopProfile' in recipe and recipe['version'] < 7:
-                raise ValueError('Shop profiles require recipe version 7')
             if entry['includeInGame']:
                 for town in range(TOWN_COUNT):
                     resolve_inventory(shop_catalog, map_id, recipe['seed'], town, shop_profile)

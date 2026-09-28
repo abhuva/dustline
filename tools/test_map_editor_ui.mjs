@@ -16,6 +16,10 @@ Object.assign(w,{structuredClone,compile,makeNode,presets,MAX_NODES,LUT_MAX_POIN
   const path=String(url);
   if(path.includes('schema'))return {ok:true,status:200,json:async()=>structuredClone(schema)};
   if(path.includes('art.json'))return {ok:true,status:200,json:async()=>structuredClone(art)};
+  if(path==='/api/shop-preview'&&options.method==='POST'){
+    const request=JSON.parse(options.body),count=request.shopProfile.stockSize;
+    return {ok:true,status:200,json:async()=>({profile:structuredClone(request.shopProfile),towns:Array.from({length:6},(_,index)=>({index,name:`TOWN ${index}`,tierCap:request.shopProfile.townTierRange[1],items:Array.from({length:count},(_item,saveId)=>({saveId,id:`item_${saveId}`,name:`ITEM ${saveId}`,family:'front',tier:1}))}))})};
+  }
   if(path==='/api/library'&&options.method==='PUT'){
     const request=JSON.parse(options.body);assert.equal(request.revision,libraryRevision);mapLibrary=structuredClone(request.library);libraryRevision+='x';
     return {ok:true,status:200,json:async()=>({library:structuredClone(mapLibrary),revision:libraryRevision})};
@@ -56,6 +60,8 @@ $('view').value='final';$('view').dispatchEvent(new w.Event('change'));await wai
 click($('art-bank'));assert.equal($('material-bindings').children.length,4);assert.equal($('decoration-bindings').children.length,4);assert.equal($('world-bindings').children.length,2);
 edit('Material slot 2 ID',7);assert.equal(JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).artProfile.materials[1].id,7);
 edit('Material slot 2 ID',1);click($('close-art'));
+click($('shop-profile'));await wait();assert.equal($('shop-preview').children.length,6);assert.equal(w.document.querySelectorAll('.shop-modifier-row').length,6);edit('Shop stock size',8);await wait();recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,7);assert.equal(recipe.shopProfile.stockSize,8);assert.equal($('shop-preview').querySelectorAll('li').length,48);click(w.document.querySelector('[aria-label="Town 0 override"]'));assert.equal(JSON.parse(w.localStorage.getItem('dustline.recipe.v1')).shopProfile.townModifiers.length,1);click($('close-shop'));
+console.log('PASS shop profile DOM: bounded regional fields, town overrides and exact six-town preview.');
 select(5);await wait();assert.ok(w.document.querySelector('.lut-chart'));assert.ok(w.lastProgram.histogramProgram);assert.equal(w.document.querySelector('.lut-node-row').children.length,2);assert.equal(w.document.querySelector('.lut-node-row .setting.full'),null);
 assert.equal(w.document.querySelector('.lut-chart svg').getAttribute('preserveAspectRatio'),'none');
 const histogram=new Uint16Array(256);histogram[42]=4096;
@@ -81,8 +87,8 @@ select(6);await wait();
 w.testWorker.onmessage({data:{id:w.lastProgram.id,ms:1,outputs:[{meta:new Uint32Array([0,3,2,0,123,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]),cells:new Uint8Array(4096).fill(255),seed:42,unknown:[255]}]}});
 assert.match($('notice').textContent,/Unassigned material IDs: 255/);assert.match($('legend').textContent,/Sand.*Gravel/);
 // Deleting the material root restores the explicit legacy fallback and undo restores both roots.
-click($('delete'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,6);assert.equal(recipe.materialOutput,undefined);
-click($('undo'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,6);assert.equal(recipe.materialOutput,6);
+click($('delete'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,7);assert.equal(recipe.materialOutput,undefined);
+click($('undo'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.version,7);assert.equal(recipe.materialOutput,6);
 // Changing outputs never replaces the wall/floor root with a material root.
 select(6);click($('set-output'));recipe=JSON.parse(w.localStorage.getItem('dustline.recipe.v1'));assert.equal(recipe.output,3);assert.equal(recipe.materialOutput,6);
 console.log('PASS material editor DOM: independent roots, pinned edits, JSON roundtrip, full-render request/zoom, warnings/legend, deletion/undo.');

@@ -32,6 +32,12 @@ DEFAULT_PROFILE = {
     'mixWeights': {'upgrade': 1, 'front': 1, 'side': 1, 'top': 1},
     'townModifiers': [],
 }
+TOWN_NAMES = (
+    'DUSTHAVEN', 'IRONWELL', 'RED MESA', 'ASH CROSS', 'RUSTPOINT', 'DRY CREEK',
+    'CINDER REST', 'GREYRIDGE', 'SALT YARD', 'COPPER RUN', 'BLACK PUMP', 'OLD SPAN',
+    'TIN ROOF', 'HOLLOW WELL', 'WEST RELAY', 'BRASS GATE', 'LOW RIDGE', 'SCRAPFORD',
+    'BONE ROAD', 'NIGHT POST', 'SUNDER', 'DEAD RADIO', 'BURNT FORD', 'LAST LIGHT',
+)
 
 
 def _integer(value, low, high, label):
@@ -178,6 +184,14 @@ def _rank(*parts):
         digest.update(len(encoded).to_bytes(2, 'little'))
         digest.update(encoded)
     return digest.digest()
+
+
+def town_name(map_id, town):
+    _integer(town, 0, TOWN_COUNT - 1, 'Town index')
+    value = 2166136261
+    for byte in map_id.encode('utf8'):
+        value = ((value ^ byte) * 16777619) & 0xffffffff
+    return TOWN_NAMES[(value + town) % len(TOWN_NAMES)]
 
 
 def _allowed(item, map_id):
