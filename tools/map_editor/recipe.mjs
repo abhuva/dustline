@@ -10,7 +10,7 @@ export function normalizePlacements(recipe) {
   const legacy=Array.isArray(recipe.nodes)?recipe.nodes.filter(node=>node.type==='gate'):[];
   if(!Array.isArray(recipe.portals))recipe.portals=legacy.map(node=>({id:node.gateId,x:node.p[0],y:node.p[1],width:node.p[2],height:node.p[3]}));
   if(!Array.isArray(recipe.playerSpawns))recipe.playerSpawns=legacy.map(node=>({id:`${node.gateId}_arrival`,x:node.p[4],y:node.p[5],heading:node.p[6]}));
-  if(legacy.length){recipe.nodes=recipe.nodes.filter(node=>node.type!=='gate');recipe.version=6;}
+  if(legacy.length){recipe.nodes=recipe.nodes.filter(node=>node.type!=='gate');recipe.version=Math.max(6,recipe.version);}
   return recipe;
 }
 const LUT_COLORS=['#759bc7','#d6a466','#83ad79','#bd7f9f','#9a8ac7','#63aaa2','#c58a67','#a4a766'];
@@ -61,7 +61,7 @@ export function compile(recipe, schema, target = recipe.output, validateAll = tr
   const integer = (value, lo, hi, name) => {
     if (!Number.isInteger(value) || value < lo || value > hi) fail(`${name}: expected ${lo}–${hi}.`);
   };
-  if (![1,2,3,4,5,6].includes(recipe.version) || !Array.isArray(recipe.nodes)) fail('Unsupported recipe format.');
+  if (![1,2,3,4,5,6,7].includes(recipe.version) || !Array.isArray(recipe.nodes)) fail('Unsupported recipe format.');
   integer(recipe.seed, 0, 0xffffffff, 'Seed');
   if (!recipe.nodes.length || recipe.nodes.length > MAX_NODES) fail(`Use between 1 and ${MAX_NODES} nodes.`);
   const ops = new Map(schema.operations.map((op, index) => [op.id, { ...op, index }]));

@@ -41,6 +41,11 @@ const char* town_name(int town_index) {
     const int first=int(hash_text(map_catalog::maps[selected].id)%uint32_t(count));
     return town_names[(first+town_index)%count];
 }
+shop_inventory_info shop_inventory(int town_index) {
+    BN_ASSERT(town_index>=0 && town_index<cave_layout::town_count,"Invalid shop town index");
+    const auto& shop=map_catalog::maps[selected].shops[town_index];
+    return {shop.save_ids,shop.count};
+}
 uint32_t persistent_id(int index) {
     return index>=0 && index<map_catalog::count?hash_text(map_catalog::maps[index].id):0;
 }

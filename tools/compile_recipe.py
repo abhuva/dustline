@@ -5,6 +5,7 @@ import hashlib
 import re
 from pathlib import Path
 from art_profiles import load_catalog as load_art_catalog, profile_key, profiles_for_entries, validate_profile
+from shop_catalog import TOWN_COUNT, load_catalog as load_shop_catalog, normalize_profile as normalize_shop_profile, resolve_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = json.loads((ROOT / 'tools/map_editor/schema.json').read_text())
@@ -144,7 +145,7 @@ def compiled_parameters(node):
 
 
 def compile_recipe(recipe, target=None):
-    if recipe.get('version') not in (1, 2, 3, 4, 5, 6):
+    if recipe.get('version') not in (1, 2, 3, 4, 5, 6, 7):
         raise ValueError('Unsupported recipe version')
     integer(recipe.get('seed'), 0, 0xffffffff, 'Seed')
     spawn_profiles(recipe)
@@ -309,6 +310,8 @@ def validate_library(library, compile_maps=True):
     if not isinstance(entries, list) or not 1 <= len(entries) <= 64:
         raise ValueError('Map library must contain between 1 and 64 maps')
     ids, enabled = set(), []
+    declared_ids = {entry.get('id') for entry in entries if isinstance(entry, dict) and isinstance(entry.get('id'), str)}
+    shop_catalog = load_shop_catalog(map_ids=declared_ids)
     art_catalog = load_art_catalog()
     for index, entry in enumerate(entries):
         if not isinstance(entry, dict):
@@ -327,7 +330,7 @@ def validate_library(library, compile_maps=True):
         name = recipe.get('name')
         if not isinstance(name, str) or not 1 <= len(name) <= 24 or not MAP_NAME.fullmatch(name):
             raise ValueError(f'Map {map_id} name must use 1-24 title-safe characters')
-        if recipe.get('version') not in (1, 2, 3, 4, 5, 6):
+        if recipe.get('version') not in (1, 2, 3, 4, 5, 6, 7):
             raise ValueError(f'Map {map_id} has an unsupported recipe version')
         integer(recipe.get('seed'), 0, 0xffffffff, f'Map {map_id} seed')
         try:
@@ -337,6 +340,15 @@ def validate_library(library, compile_maps=True):
             raise ValueError(f'Map {map_id}: {error}') from error
         try:
             validate_profile(recipe.get('artProfile'), art_catalog)
+        except ValueError as error:
+            raise ValueError(f'Map {map_id}: {error}') from error
+        try:
+            shop_profile = normalize_shop_profile(recipe.get('shopProfile'))
+            if 'shopProfile' in recipe and recipe['version'] < 7:
+                raise ValueError('Shop profiles require recipe version 7')
+            if entry['includeInGame']:
+                for town in range(TOWN_COUNT):
+                    resolve_inventory(shop_catalog, map_id, recipe['seed'], town, shop_profile)
         except ValueError as error:
             raise ValueError(f'Map {map_id}: {error}') from error
         nodes = recipe.get('nodes')
@@ -427,6 +439,7 @@ def _program(text, symbol, program, fallback_op):
 def generate():
     library, entries, revision = load_library()
     art_catalog = load_art_catalog()
+    shop_catalog = load_shop_catalog(map_ids={entry['id'] for entry in library['maps']})
     _, bank_indices, bank_keys = profiles_for_entries(entries, art_catalog)
     map_indices = {entry['id']: index for index,entry in enumerate(entries)}
     portal_lists = [entry['recipe']['portals'] for entry in entries]
@@ -458,11 +471,13 @@ def generate():
     text = '// Generated from maps/map-library.json ('+revision[:12]+'). Do not edit.\n#pragma once\n#include "map_recipe.h"\n#include "spawn_profiles.h"\n'
     text += 'namespace map_catalog {\nstruct portal {\n    const char* id; uint16_t x,y,width,height; int8_t destination_map,destination_spawn;\n};\n'
     text += 'struct player_spawn { const char* id; uint16_t x,y; int16_t heading; };\n'
+    text += 'struct shop_inventory { uint8_t count; uint8_t save_ids[9]; };\n'
     text += 'struct entry {\n    const char* id; const char* name; uint32_t seed; int art_bank;\n'
     text += '    const mapgen::node* nodes; int count;\n    const mapgen::node* material_nodes; int material_count;\n'
     text += '    const mapgen::node* spawn_nodes; int spawn_count;\n    const mapgen::node* decoration_nodes; int decoration_count;\n'
     text += '    const spawn_profiles::profile* spawn_profiles; int spawn_profile_count;\n'
-    text += '    const portal* portals; int portal_count; const player_spawn* player_spawns; int player_spawn_count;\n};\n'
+    text += '    const portal* portals; int portal_count; const player_spawn* player_spawns; int player_spawn_count;\n'
+    text += '    const shop_inventory* shops;\n};\n'
     compiled = []
     for index, entry in enumerate(entries):
         recipe = copy.deepcopy(entry['recipe'])
@@ -494,6 +509,13 @@ def generate():
         for item in player_spawn_lists[index]:
             text += '    {'+json.dumps(item['id'])+','+','.join(map(str,(item['x'],item['y'],item['heading'])))+'},\n'
         text += '};\n'
+        shops = [resolve_inventory(shop_catalog, entry['id'], recipe['seed'], town,
+                                   recipe.get('shopProfile')) for town in range(TOWN_COUNT)]
+        text += f'inline constexpr shop_inventory map_{index}_shops[]={{\n'
+        for shop in shops:
+            padded = shop['saveIds'] + [0] * (9 - len(shop['saveIds']))
+            text += '    {' + str(len(shop['saveIds'])) + ',{' + ','.join(map(str, padded)) + '}},\n'
+        text += '};\n'
         compiled.append((entry, recipe, branches))
     text += 'inline constexpr entry maps[]={\n'
     for index, (entry, recipe, branches) in enumerate(compiled):
@@ -503,6 +525,7 @@ def generate():
         fields.extend((f'map_{index}_spawn_profiles',str(len(spawn_profiles(recipe)))))
         fields.extend((f'map_{index}_portals',str(len(portal_lists[index]))))
         fields.extend((f'map_{index}_player_spawns',str(len(player_spawn_lists[index]))))
+        fields.append(f'map_{index}_shops')
         text += '    {'+json.dumps(entry['id'])+','+json.dumps(recipe['name'].upper())+','+str(recipe['seed'])+'u,'+str(bank_indices[bank_keys[index]])+','+','.join(fields)+'},\n'
     text += '};\ninline constexpr int count=sizeof(maps)/sizeof(maps[0]);\n'
     start=library['world']['start'];start_map=map_indices[start['map']]

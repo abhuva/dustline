@@ -16,6 +16,8 @@ int start_map();
 int start_spawn();
 const char* name(int index);
 const char* town_name(int town_index);
+struct shop_inventory_info { const uint8_t* save_ids; int count; };
+shop_inventory_info shop_inventory(int town_index);
 uint32_t persistent_id(int index);
 int find_persistent_id(uint32_t id);
 uint32_t catalog_signature();

@@ -3,7 +3,7 @@ import copy
 import json
 
 from compile_recipe import ROOT
-from shop_catalog import DEFAULT_PROFILE, load_catalog, normalize_profile, resolve_inventory, validate_catalog
+from shop_catalog import DEFAULT_PROFILE, TOWN_COUNT, load_catalog, normalize_profile, resolve_inventory, validate_catalog
 
 
 library = json.loads((ROOT / 'maps/map-library.json').read_text())
@@ -45,4 +45,22 @@ profile = normalize_profile({'tierFloor': 1, 'townTierRange': [1, 2], 'stockSize
                              'townModifiers': [{'town': 2, 'stockDelta': -1,
                                                 'mixWeights': {'top': 5}}]})
 assert resolve_inventory(catalog, 'wasteland', 7, 2, profile)['stockSize'] == 3
+
+# Every enabled recipe resolves all six towns, and terrain/editor-only metadata
+# cannot perturb inventories because it is not an input to the resolver.
+snapshot = {}
+for entry in library['maps']:
+    if not entry['includeInGame']:
+        continue
+    recipe = entry['recipe']
+    rows = [resolve_inventory(catalog, entry['id'], recipe['seed'], town,
+                              recipe.get('shopProfile')) for town in range(TOWN_COUNT)]
+    snapshot[entry['id']] = [row['saveIds'] for row in rows]
+    changed = copy.deepcopy(recipe)
+    changed['name'] += ' changed'
+    changed['nodes'] = []
+    assert [resolve_inventory(catalog, entry['id'], changed['seed'], town,
+                              changed.get('shopProfile'))['saveIds'] for town in range(TOWN_COUNT)] == snapshot[entry['id']]
+encoded = json.dumps(snapshot, sort_keys=True, separators=(',', ':')).encode()
+assert __import__('hashlib').sha256(encoded).hexdigest() == 'b151c77557501d0fc0da99c27a03f07f085f5b79dcc81fb6ce10d45e30595242'
 print('PASS shared shop catalog validation, immutable save IDs and deterministic resolution.')
