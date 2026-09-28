@@ -12,7 +12,7 @@ public:
     enum class event { none, redraw, menu_opened, menu_closed, setup_applied, shop_purchase_requested,
                        weapon_fitting_opened, contract_opened, race_opened, return_to_world };
 
-    town_scene(int town_id,int setup);
+    town_scene(int town_id,int setup,const garage_shop::ownership& owned);
     event update(int& setup);
     void set_visible(bool visible);
     void suspend();
@@ -26,6 +26,9 @@ public:
     int menu_selection() const { return _menu_selection; }
     int menu_page() const { return _menu_page; }
     int shop_selection() const { return _shop_selection; }
+    int shop_count() const { return _shop_count; }
+    int shop_item() const;
+    void refresh_shop(const garage_shop::ownership& owned);
     bool shop_info_open() const { return _shop_info_open; }
     place current_place() const { return _place; }
     bool menu_open() const { return _menu_open; }
@@ -42,7 +45,8 @@ private:
     bn::sprite_ptr _player;
     bn::sprite_ptr _prompt;
     bn::sprite_ptr _shop_cursor;
-    bn::vector<bn::sprite_ptr,garage_shop::count> _shop_icons;
+    bn::vector<bn::sprite_ptr,garage_shop::max_visible_stock> _shop_icons;
+    uint8_t _visible_stock[garage_shop::max_visible_stock]{};
     int _town_id;
     int _x=128,_y=226;
     int _direction=3;
@@ -50,6 +54,7 @@ private:
     int _prompt_ticks=0;
     int _menu_selection=0;
     int _menu_page=0,_shop_selection=0;
+    int _shop_count=0;
     place _place=place::exterior;
     bool _menu_open=false;
     bool _shop_info_open=false;

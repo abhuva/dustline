@@ -7,6 +7,7 @@
 #include "bn_sprite_items_town_interact.h"
 #include "bn_sprite_items_shop_icons.h"
 #include "bn_sprite_items_fitting_cursor.h"
+#include "world_map.h"
 
 namespace {
 constexpr town_scene::rect exterior_solids[]={
@@ -47,7 +48,7 @@ bool hits(const town_scene::rect (&areas)[Size],int left,int top,int right,int b
 }
 }
 
-town_scene::town_scene(int town_id,int setup) :
+town_scene::town_scene(int town_id,int setup,const garage_shop::ownership& owned) :
     _player(bn::sprite_items::town_player.create_sprite(0,0)),
     _prompt(bn::sprite_items::town_interact.create_sprite(0,0)),
     _shop_cursor(bn::sprite_items::fitting_cursor.create_sprite(0,0,1)),
@@ -58,11 +59,37 @@ town_scene::town_scene(int town_id,int setup) :
     _prompt.set_z_order(-3);
     _prompt.set_visible(false);
     _shop_cursor.set_bg_priority(0);_shop_cursor.set_z_order(-9);_shop_cursor.set_visible(false);
-    for(int index=0;index<garage_shop::count;++index) {
-        auto icon=bn::sprite_items::shop_icons.create_sprite(-82+(index%3)*34,-19+(index/3)*32,index);
+    for(int index=0;index<garage_shop::max_visible_stock;++index) {
+        auto icon=bn::sprite_items::shop_icons.create_sprite(-82+(index%3)*34,-19+(index/3)*32,0);
         icon.set_bg_priority(0);icon.set_z_order(-8);icon.set_visible(false);_shop_icons.push_back(icon);
     }
+    refresh_shop(owned);
     _load(place::exterior);
+}
+
+int town_scene::shop_item() const {
+    if(_shop_selection<0 || _shop_selection>=_shop_count)return -1;
+    return garage_shop::index_for_save_id(_visible_stock[_shop_selection]);
+}
+
+void town_scene::refresh_shop(const garage_shop::ownership& owned) {
+    _shop_count=0;
+    const auto stock=world_map::shop_inventory(_town_id);
+    for(int index=0;index<stock.count && _shop_count<garage_shop::max_visible_stock;++index) {
+        const int save_id=stock.save_ids[index];
+        if(!garage_shop::owned_save_id(owned,save_id))_visible_stock[_shop_count++]=uint8_t(save_id);
+    }
+    if(_shop_count==0)_shop_selection=0;
+    else if(_shop_selection>=_shop_count)_shop_selection=_shop_count-1;
+    for(int index=0;index<_shop_icons.size();++index) {
+        if(index<_shop_count) {
+            const int item=garage_shop::index_for_save_id(_visible_stock[index]);
+            BN_ASSERT(item>=0,"Compiled shop contains unknown save ID");
+            _shop_icons[index].set_tiles(bn::sprite_items::shop_icons.tiles_item(),
+                                         garage_shop::catalog[item].icon_frame);
+        }
+    }
+    if(_background)_refresh_sprite();
 }
 
 bool town_scene::_inside(const rect& area,int x,int y) const {
@@ -114,9 +141,11 @@ void town_scene::_refresh_sprite() {
     }
     _prompt.set_visible(_visible && interaction && !_menu_open);
     const bool shop_visible=_visible && _menu_open && _menu_page==1 && !_shop_info_open;
-    for(auto& icon:_shop_icons)icon.set_visible(shop_visible);
-    _shop_cursor.set_visible(shop_visible);
-    if(shop_visible)_shop_cursor.set_position(-82+(_shop_selection%3)*34,-19+(_shop_selection/3)*32);
+    for(int index=0;index<_shop_icons.size();++index)
+        _shop_icons[index].set_visible(shop_visible && index<_shop_count);
+    _shop_cursor.set_visible(shop_visible && _shop_count>0);
+    if(shop_visible && _shop_count>0)
+        _shop_cursor.set_position(-82+(_shop_selection%3)*34,-19+(_shop_selection/3)*32);
 }
 
 town_scene::event town_scene::update(int& setup) {
@@ -128,16 +157,21 @@ town_scene::event town_scene::update(int& setup) {
                 }
                 return event::none;
             }
-            int column=_shop_selection%3,row=_shop_selection/3;
-            if(bn::keypad::left_pressed())column=(column+2)%3;
-            else if(bn::keypad::right_pressed())column=(column+1)%3;
-            else if(bn::keypad::up_pressed())row=(row+2)%3;
-            else if(bn::keypad::down_pressed())row=(row+1)%3;
-            else if(bn::keypad::r_pressed()) {_shop_info_open=true;_refresh_sprite();return event::redraw;}
-            else if(bn::keypad::a_pressed())return event::shop_purchase_requested;
+            int next=_shop_selection;
+            if(bn::keypad::left_pressed() && _shop_count)next=(_shop_selection+_shop_count-1)%_shop_count;
+            else if(bn::keypad::right_pressed() && _shop_count)next=(_shop_selection+1)%_shop_count;
+            else if(bn::keypad::up_pressed() && _shop_count) {
+                next=_shop_selection-3;
+                if(next<0) { next=_shop_selection;while(next+3<_shop_count)next+=3; }
+            } else if(bn::keypad::down_pressed() && _shop_count) {
+                next=_shop_selection+3;
+                if(next>=_shop_count)next=_shop_selection%3< _shop_count?_shop_selection%3:_shop_count-1;
+            } else if(bn::keypad::r_pressed() && _shop_count) {
+                _shop_info_open=true;_refresh_sprite();return event::redraw;
+            } else if(bn::keypad::a_pressed() && _shop_count)return event::shop_purchase_requested;
             else if(bn::keypad::b_pressed()) {_menu_page=0;_refresh_sprite();return event::redraw;}
             else return event::none;
-            _shop_selection=row*3+column;_refresh_sprite();return event::redraw;
+            _shop_selection=next;_refresh_sprite();return event::redraw;
         }
         if(bn::keypad::down_pressed() || bn::keypad::up_pressed()) {
             _menu_page=1;_shop_info_open=false;_refresh_sprite();return event::redraw;

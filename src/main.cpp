@@ -575,7 +575,7 @@ int main() {
         car=driving::Car();car.x=return_point.x;car.y=return_point.y;apply_battery();
         camera_lead_x=0;camera_lead_y=0;camera_x=car.x;camera_y=car.y-6;
         combat_world.refill_player();combat_world.clear_bullets();
-        town.reset(new town_scene(current_town,setup));
+        town.reset(new town_scene(current_town,setup,shop_owned));
         town->return_to_race_building();
         contract_open=false;race_open=true;button_guard=true;
         overlay=bn::regular_bg_items::town_dialog.create_bg(0,0);
@@ -864,7 +864,7 @@ int main() {
                 combat_world.refill_player();
                 bool completed=!race_manager.session() && mission_manager.on_town_enter(world_map::index(),current_town);
                 unload_scene(); state=4; ++town_visits;
-                town.reset(new town_scene(current_town,setup));
+                town.reset(new town_scene(current_town,setup,shop_owned));
                 if(completed)bn::sound_items::chime.play(fixed(0.55));
                 redraw=true;
             }
@@ -960,7 +960,8 @@ int main() {
                                                            garage_shop::weapon_mask(shop_owned)));
                     state=8;button_guard=true;redraw=true;
                 } else if(town_event==town_scene::event::shop_purchase_requested) {
-                    const int id=town->shop_selection();
+                    const int id=town->shop_item();
+                    BN_ASSERT(id>=0,"Shop purchase requested without a visible item");
                     const auto& item=garage_shop::catalog[id];
                     if(garage_shop::owned(shop_owned,id)) {
                         shop_notice=2;bn::sound_items::bump.play(fixed(0.2));
@@ -972,6 +973,7 @@ int main() {
                             else if(effect==garage_shop::upgrade::tuned_injector)tuning.acceleration+=fixed(0.006);
                             else if(effect==garage_shop::upgrade::reinforced_plating)combat_world.set_reinforced_plating(true);
                         }
+                        town->refresh_shop(shop_owned);
                         bn::sound_items::chime.play(fixed(0.5));
                     } else {
                         shop_notice=3;bn::sound_items::bump.play(fixed(0.2));
@@ -1280,9 +1282,12 @@ int main() {
                     line=bn::to_string<5>(driving::setups[town->menu_selection()].mass);line+=" KG";text.generate(18,52,line,hud_text);
                     text.generate(-104,68,"A FIT     B CANCEL",hud_text);
                 } else {
-                    const int id=town->shop_selection();
+                    const int id=town->shop_item();
+                    if(id<0) {
+                        text.generate(6,-20,"SOLD OUT",hud_text);
+                        text.generate(6,56,"B SETUP",hud_text);
+                    } else {
                     const auto& item=garage_shop::catalog[id];
-                    const bool owned=garage_shop::owned(shop_owned,id);
                     if(town->shop_info_open()) {
                         bn::string<32> line=item.name;text.generate(-104,35,line,hud_text);
                         text.generate(-104,49,item.detail,hud_text);
@@ -1293,14 +1298,14 @@ int main() {
                         bn::string<32> line=item.name;text.generate(6,-29,line,hud_text);
                         line=bn::to_string<5>(item.credits);line+=" GOLD + ";
                         line+=bn::to_string<3>(item.scrap);line+=" SCR";text.generate(6,-13,line,hud_text);
-                        if(owned)line="OWNED";
-                        else if(scrap<item.scrap || mission_manager.credits()<item.credits)line="NEED RESOURCES";
+                        if(scrap<item.scrap || mission_manager.credits()<item.credits)line="NEED RESOURCES";
                         else line="AVAILABLE";
                         text.generate(6,3,line,hud_text);
                         line="GOLD ";line+=bn::to_string<6>(mission_manager.credits());text.generate(6,20,line,hud_text);
                         line="SCRAP ";line+=bn::to_string<5>(scrap);text.generate(6,36,line,hud_text);
                         text.generate(6,56,"A BUY  R INFO",hud_text);
                         text.generate(6,72,"B SETUP",hud_text);
+                    }
                     }
                 }
             }
@@ -1793,7 +1798,7 @@ int main() {
         dustline_progression_telemetry[1]=scrap;
         dustline_progression_telemetry[2]=shop_owned.words[0];
         dustline_progression_telemetry[3]=shop_notice;
-        dustline_progression_telemetry[4]=0;
+        dustline_progression_telemetry[4]=town?town->shop_count():-1;
         dustline_progression_telemetry[5]=combat_world.collected_scrap;
         dustline_progression_telemetry[6]=0;
         dustline_progression_telemetry[7]=fitting?2:town?town->menu_page():-1;

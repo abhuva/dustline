@@ -49,14 +49,21 @@ def run():
     t.tap(t.R);t.capture('town/garage-shop-info');info=t.progression_state()
     t.check('R opens information for the highlighted shop item',info['shop_info_open'],info)
     t.tap(t.R)
-    # Buy the complete 3x3 catalog: row 0 left-to-right, then rows 1 and 2.
-    t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A)
-    t.tap(t.DOWN);t.tap(t.A);t.tap(t.LEFT);t.tap(t.A);t.tap(t.LEFT);t.tap(t.A)
-    t.tap(t.DOWN);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A);t.tap(t.RIGHT);t.tap(t.A)
+    # Purchased stock disappears immediately; repeatedly buying the first
+    # packed cell therefore consumes the complete fixed base inventory.
+    for expected in range(8,-1,-1):
+        before=t.progression_state()
+        t.tap(t.A)
+        after=t.progression_state()
+        t.check('A purchase removes one visible item without an invalid cursor',
+                before['shop_count']==expected+1 and after['shop_count']==expected and
+                after['shop_selection']<=max(0,expected-1),dict(before=before,after=after))
     purchased=t.progression_state();t.capture('town/garage-shop-purchased')
     t.check('A directly buys every upgrade and weapon using gold plus scrap',
             purchased['owned']==0x1ff and purchased['scrap']==384 and
             t.mission_state()['credits']==2870,purchased)
+    t.check('A fully purchased town reports sold out with no selectable cell',
+            purchased['shop_count']==0 and purchased['shop_selection']==0,purchased)
     t.tap(t.B)
     t.check('B returns from the shop grid to setup',
             t.progression_state()['menu_page']==0,t.progression_state())

@@ -174,7 +174,7 @@ def audio_state():
 
 def progression_state():
     v=[lib.emulator_read(progression_address+4*i) for i in range(16)]
-    return dict(magic=v[0],scrap=v[1],owned=v[2],shop_notice=v[3],duplicates=v[4],
+    return dict(magic=v[0],scrap=v[1],owned=v[2],shop_notice=v[3],shop_count=v[4],
                 collected_scrap=v[5],collected_blueprints=v[6],menu_page=v[7],
                 shop_selection=v[8],active_pickups=v[9],collected_energy=v[10],
                 loadout_slot=v[11],inventory_open=bool(v[12]),inventory_selection=v[13],

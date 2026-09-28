@@ -4,6 +4,7 @@
 
 namespace garage_shop {
 
+inline constexpr int max_visible_stock=9;
 inline constexpr int ownership_word_count=max_save_id/32+1;
 struct ownership {
     uint32_t words[ownership_word_count]{};
