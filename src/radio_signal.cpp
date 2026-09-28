@@ -57,7 +57,7 @@ bool away_from_towns(int cell_x,int cell_y) {
     return true;
 }
 
-bool away_from_portals(int cell_x,int cell_y) {
+bool away_from_exits(int cell_x,int cell_y) {
     for(int side=0;side<4;++side)if(world_map::exit_mask()&(1<<side)) {
         const auto portal=world_map::exit(side);
         if(absolute(cell_x-portal.x/cave_layout::cell_size)<=2 &&
@@ -99,7 +99,7 @@ void system::_spawn(int index,int avoid_x,int avoid_y) {
     auto eligible=[&](int cell_x,int cell_y) {
         const auto& layout=wasteland::layout();
         if(layout.wall(cell_x,cell_y) || !away_from_towns(cell_x,cell_y) ||
-           !away_from_portals(cell_x,cell_y))return false;
+           !away_from_exits(cell_x,cell_y))return false;
         const int x=cell_x*cave_layout::cell_size+cave_layout::cell_size/2;
         const int y=cell_y*cave_layout::cell_size+cave_layout::cell_size/2;
         if(distance_squared(x,y,avoid_x,avoid_y)<player_spacing*player_spacing)return false;

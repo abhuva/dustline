@@ -16,7 +16,8 @@ function execute(program,seed){
 function run(program, seed, {collision=false,textures=false,schematic=false,exitMask=0,portals=[],playerSpawns=[],materialProgram=null,spawnProgram=null,decorationProgram=null,spawnProfiles=null,showSpawns=true,full=false,small=false,bank=art}={}) {
   configureMaterials(bank);
   execute(program,seed);
-  if(engine._recipe_apply_exits){const failed=engine._recipe_apply_exits(exitMask);if(failed)throw new Error(`Cardinal exit overlay failed (mask ${failed}).`);}
+  const initialType=engine.HEAPU32[(engine._recipe_meta()>>>2)+1];
+  if(initialType===2&&engine._recipe_apply_exits){const failed=engine._recipe_apply_exits(exitMask);if(failed)throw new Error(`Cardinal exit overlay failed (mask ${failed}).`);}
   const meta = engine.HEAPU32.slice(engine._recipe_meta() >>> 2, (engine._recipe_meta() >>> 2) + 20);
   const cells = engine.HEAPU8.slice(engine._recipe_cells(), engine._recipe_cells() + 4096);
   let refined=null,roads=null,reserved=null,texture=null,ground=null,tileMap=null,decorations=null,spawns=null,spawnTypes=null,patches=0,invalidPortals=[],invalidPlayerSpawns=[];
@@ -49,7 +50,7 @@ self.onmessage = async ({data}) => {
   const {id,mapId,program,seed,collision,textures,schematic,exitMask=0,portals,playerSpawns,seeds,compare,materialProgram,spawnProgram,decorationProgram,spawnProfiles,histogramProgram,histogramNode,categorical,categoricalColors,showSpawns,render} = data;
   const bank=selectBank(mapId),options={materialProgram,spawnProgram,decorationProgram,spawnProfiles,showSpawns,schematic,exitMask,portals,playerSpawns,bank};
   try {
-    if(data.atlas){const maps=data.maps.map(item=>{const output=run(item.program,item.seed,{schematic:true,exitMask:item.exitMask,bank:selectBank(item.id)}),roads=new Uint8Array(128*128);for(let y=0;y<128;++y)for(let x=0;x<128;++x)roads[y*128+x]=output.roads[(y*8+4)*1024+x*8+4];return {id:item.id,grid:item.grid,cells:output.cells,roads,meta:output.meta,exitMask:item.exitMask};});self.postMessage({id,atlas:true,maps},maps.flatMap(map=>[map.cells.buffer,map.roads.buffer,map.meta.buffer]));return;}
+    if(data.atlas){const maps=data.maps.map(item=>{const output=run(item.program,item.seed,{schematic:true,exitMask:item.exitMask,bank:selectBank(item.id)}),roads=new Uint8Array(128*128);for(let y=0;y<128;++y)for(let x=0;x<128;++x)roads[y*128+x]=output.roads[(y*8+4)*1024+x*8+4];return {id:item.id,grid:item.grid,component:item.component,cells:output.cells,roads,meta:output.meta,exitMask:item.exitMask};});self.postMessage({id,atlas:true,maps},maps.flatMap(map=>[map.cells.buffer,map.roads.buffer,map.meta.buffer]));return;}
     if(render){
       const output=run(program,seed,{...options,full:true});
       if(!output.tileMap)throw new Error('Choose a Playable world to render.');

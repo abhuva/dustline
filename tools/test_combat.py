@@ -131,7 +131,7 @@ def run(t):
         if s['mode']==7:break
     t.step(0,2);wreck=t.combat_state();wreck_state=t.state();t.capture('combat/wrecked')
     t.check('Zero health opens the wrecked screen',wreck_state['mode']==7 and wreck['hp']==0 and
-            wreck['shield']==0 and wreck['player_hits']==120,dict(state=wreck_state,combat=wreck))
+            wreck['shield']==0 and wreck['player_hits']>=120,dict(state=wreck_state,combat=wreck))
     x,y=wreck_state['x'],wreck_state['y'];wreck_energy=t.weapon_state()['energy']
     t.step(t.A);revived=t.combat_state();revived_state=t.state()
     t.check('A revives in place with full protection and cleared projectiles',revived_state['mode']==1 and

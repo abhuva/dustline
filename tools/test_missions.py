@@ -42,7 +42,7 @@ def run():
         t.tap(t.A);t.step(0,20)
     t.capture('missions/courier-marker')
     t.check('Leaving town preserves the contract and shows its driving target',t.state()['mode']==1 and
-            t.mission_state()['status']==1 and t.portal_state()['route_portal']>=0,
+            t.mission_state()['status']==1 and t.portal_state()['route_exit']>=0,
             dict(state=t.state(),mission=t.mission_state(),town=t.town_state(),portal=t.portal_state()))
     t.tap(t.START);t.capture('missions/pause-active-contract')
     t.check('Pause status reports the active contract',t.state()['mode']==2 and

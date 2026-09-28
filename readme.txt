@@ -1,5 +1,5 @@
 DUSTLINE - PROCEDURAL WASTELANDS
-Playable Game Boy Advance driving/combat prototype / version 0.15
+Playable Game Boy Advance driving/combat prototype / version 0.16
 
 PLAY
 ----
@@ -12,14 +12,15 @@ Choose START NEW GAME and press A to begin at the authored world start with a
 fresh car, inventory and progression state. CONTINUE GAME appears only when a
 valid cartridge save exists and restores that save's region and position. The
 ROM currently includes the three enabled 8192 x 8192 procedural regions;
-disabled catalog drafts are not compiled and regions are reached through Portals.
+disabled catalog drafts are not compiled and regions are reached through
+reciprocal cardinal exits generated from the World Map.
 There is no runtime random-map choice. Recipes can
 use cellular automata, masks, smoothing and largest-component flood fill so
 disconnected floor is filled and all six outposts are reachable.
 The loading screen shows aggregate progress through the selected map's world,
 material, spawn and decoration node graphs, followed by encounter and scene setup.
 Select opens a paused four-page field menu without resetting the car. Its first
-page is a complete 128 x 128 region map with gold towns, green Portals, the red player and the active
+page is a complete 128 x 128 region map with gold towns, green exits, the red player and the active
 objective; the remaining pages contain driving setup, audio and save data. While driving, R fires the
 fitted front and side weapons together and L fires the fitted top special.
 Weapon fitting is changed only at a garage; there is no loadout switching while driving.
@@ -62,18 +63,17 @@ additional interiors or dialogue trees yet.
 
 CONNECTED REGIONS
 -----------------
-The enabled procedural regions form an authored world graph. Portal trigger
-rectangles are independent of arrival spawn points. Driving into a connected one stops the car
+The enabled procedural regions form an authored cardinal world graph. Every map
+has fixed north, east, south and west ports, and one saved connection joins two
+complementary sides reciprocally. Driving into a connected edge trigger stops the car
 and asks whether to travel to the connected region. No is selected initially;
 use any D-pad direction to choose Yes, A to confirm, or B to decline. Declining
-suppresses that Portal only until the car leaves its rectangle, so returning asks
-again immediately. Each Portal has one directed destination. A return trip uses
-a separate Portal transition.
+suppresses that exit only until the car leaves its rectangle, so returning asks
+again immediately. The same shared connection always provides the return trip.
 
-Arrival uses the exact separately authored Player Spawn ID, position and heading
-selected by that directed world-graph connection. Keep that point on safe floor
-outside the destination trigger and face it away from the trigger if an immediate
-return should be possible. Health, shield, battery energy, fitted weapons, tuning,
+Arrival is derived from the destination side at a safe fixed inset and faces
+inward; normal travel never falls back to the New Game spawn. Health, shield,
+battery energy, fitted weapons, tuning,
 inventory, credits and an active contract travel with the player. The destination
 region's terrain is regenerated from its fixed recipe and its enemies, pickups,
 projectiles and other local simulation start fresh; regions do not retain local
@@ -91,7 +91,7 @@ Enter that outpost to complete the delivery. Hunt contracts choose one specific
 encounter anchor in another reachable region; destroy that enemy to complete the job. A
 white/gold/red marker on the minimap shows the target or clamps to its edge to
 give a direction when the target is farther away. Outside the objective region
-it instead points to the next Portal on the shortest directed route. Contract
+it instead points to the next cardinal exit on the shortest route. Contract
 rewards scale with the number of region hops and become
 session credits immediately on completion. Return to any dispatch board and
 press A on the completion notice to request another job.
@@ -179,7 +179,7 @@ one within its hard 1024px range; it uses no energy and requires no held button.
 Salvage barrels remain visible at close range even without a receiver. One player
 bullet destroys a barrel and immediately awards 12 scrap, then schedules a new
 random barrel after roughly three to five minutes of driving. Map travel retains
-that run's pools and cooldowns to prevent portal refills. Normal save/load starts
+that run's pools and cooldowns to prevent region-transition refills. Normal save/load starts
 fresh activity pools while preserving the fitted receiver; emulator save states
 preserve the exact live pools and timers.
 Weapons respect walls/buildings and each weapon retains its own cooldown.
@@ -255,8 +255,8 @@ SAVE pages; the highlighted square in the left icon rail shows the active page.
 MAP displays the complete 128 x 128 region, all towns, the live player position
 and the active race checkpoint or contract destination when one exists. It opens
 on CURRENT POSITION; Left/Right cycles the player, every named town and every
-Portal. The selected location receives a large bright marker and its name is
-shown along the bottom. Connected Portals read ROAD TO followed by their destination.
+connected exit. The selected location receives a large bright marker and its name is
+shown along the bottom. Connected exits read ROAD TO followed by their destination.
 In DRIVE, Up/Down chooses ACC, SPEED, GRIP,
 STEER, COAST, BRAKE, MASS, BAT or CAR. COAST is the base per-frame slowdown while
 neither A nor B is held; BRAKE is the forward-speed reduction applied by B.
@@ -523,30 +523,24 @@ game world after the next build. Delete map removes the selected catalog entry. 
 server uses revision checks and atomic file replacement to prevent stale tabs
 from silently overwriting newer saves. Unsaved edits are recovered per map in
 the browser when the catalog revision still matches. Ctrl+S also saves.
-Version 6 separates map placements from generation nodes. A Portal has a stable
-lowercase ID and rectangular trigger centre/size; it contains no arrival data.
-A Player Spawn has its own stable ID, position and arrival heading. Placements
-is the default preview. It uses a clean wall/floor/road/town schematic instead
-of full terrain textures, with orange Portal rectangles and cyan directional
-Player Spawn markers. Drag a marker to move it, drag a spawn's heading handle to
-turn it, or edit exact values below the preview. The list, Focus/Fit, duplicate,
-delete and Create arrival spawn controls make dense maps easier to author.
-Invalid placements are red. Every Portal receives a deterministic shortest path
-over drivable floor to the nearest existing road; later Portal branches may join
-earlier ones.
+Placements is the default preview. It uses a clean wall/floor/road/town schematic
+instead of full terrain textures. World connections visibly add their reserved
+gold corridor, boundary road, cyan trigger and pale derived arrival. Manual
+Player Spawns have stable IDs, positions and headings for New Game, tests and
+future special transport; drag or edit those cyan markers directly. Normal exits
+are not placements and require no local trigger or arrival authoring.
 
-Open World map for the separate region graph. Enabled maps are draggable nodes;
-orange ports are source Portals and cyan ports are destination Player Spawns.
-Spawn ports and connection destinations include their current x,y coordinates,
-which makes arrival points accidentally left beside a map's start easy to spot.
-Click a free Portal and then a Player Spawn to create a directed transition.
-Author the reverse trip separately. Choose both the starting region and starting
-spawn there. Unconnected Portals are allowed and stay inactive in the ROM. The
-graph is derived from enabled maps whenever the library is saved: valid existing
-transitions and node positions are retained, while nodes and transitions for a
-disabled map or removed Portal/Player Spawn are discarded. Newly enabled maps
-appear without transitions. Save world writes placement edits and graph rewiring
-through the same revision-checked atomic API.
+Open World map for the separate region graph. Enabled maps are freely draggable
+nodes with fixed N/E/S/W ports. Click a free port and then the complementary port
+on another map to create one reciprocal connection; occupied or incompatible
+ports are rejected. Bracketed coordinates are derived from topology and do not
+change when a node is dragged. Contradictory cycles and same-cell collisions are
+reported. Disconnected drafts may be saved, but a ROM build requires every
+enabled map to be connected to the selected start. Connection edits and removal
+are atomic in undo/redo. Atlas generates each clean 128 x 128 schematic and
+stitches it at the derived Zelda-like grid coordinate. Disabling a map removes
+its node and incident connections. Save world uses the same revision-checked
+atomic API as map saves.
 Drag between output and input ports in either direction to connect them; dropping
 onto an occupied input replaces its connection. Outputs can feed multiple inputs.
 Click the x beside a connected input to disconnect it. Escape or dropping on

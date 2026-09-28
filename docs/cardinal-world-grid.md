@@ -1,6 +1,6 @@
 # Cardinal world graph and derived edge exits
 
-**Status:** Proposed implementation design  
+**Status:** Implemented
 **Last updated:** 2026-09-28  
 **Related decision:** [ADR-005](adr/ADR-005-cardinal-region-grid.md)
 
@@ -286,3 +286,11 @@ visual quality still require emulator playtesting.
 - Whether normal edge travel retains confirmation or becomes automatic.
 - How much visual seam the atlas shows between logically adjacent but
   intentionally unconnected draft regions.
+
+## Implementation record
+
+Implemented in seven vertical commits on 2026-09-28. The active world uses
+`twin-cities.east <-> wasteland.west` and
+`wasteland.north <-> two-rules-radial.south`. Version-2 transition placements
+were intentionally discarded, as the current maps will be repaired and tuned
+in the editor. The shared exit profile is `data/cardinal-exit-profile.json`.

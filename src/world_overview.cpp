@@ -37,7 +37,7 @@ world_overview::world_overview(int player_x,int player_y) :
         for(int yy=-2;yy<=2;++yy)for(int xx=-2;xx<=2;++xx)
             if(xx==0 || yy==0)plot(x+xx,y+yy,4);
     }
-    // Portals are authored navigation exits, shown as compact green squares.
+    // Derived cardinal exits are shown as compact green squares.
     for(int side=0;side<4;++side)if(world_map::exit_mask()&(1<<side)) {
         const auto portal=world_map::exit(side);
         const int x=bn::max(1,bn::min(pixel_size-2,portal.x/world_scale));

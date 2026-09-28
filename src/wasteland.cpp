@@ -76,6 +76,7 @@ void generate(int map_index,cave_layout::progress_fn callback) {
         bn::unique_ptr<enemy_spawns> generated(new enemy_spawns());
         begin_stage(1);
         generated->generate_recipe(*current,field.data,field.auxiliary,config.p[0],config.p[1],config.p[2],config.stream,progress);
+        generated->exclude_reserved(roads.get());
         finish_stage();
         if(!spawn_points)spawn_points.reset(new spawn_locations());
         spawn_points->count=generated->count;

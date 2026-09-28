@@ -151,7 +151,7 @@ def portal_state():
     v=[lib.emulator_read(portal_address+4*i) for i in range(12)]
     return dict(magic=v[0],portal_count=v[1],current_portal=v[2],ignored_portal=v[3],
                 visits=v[4],yes=bool(v[5]),prompt=bool(v[6]),destination_map=v[7],
-                destination_spawn=v[8],portal_x=v[9],portal_y=v[10],route_portal=v[11])
+                destination_side=v[8],portal_x=v[9],portal_y=v[10],route_exit=v[11])
 
 def race_state():
     v=[lib.emulator_read(race_address+4*i) for i in range(80)]

@@ -1,6 +1,6 @@
 # ADR-005: Derive cardinal region exits from the world graph
 
-**Status:** Proposed | **Date:** 2026-09-28  
+**Status:** Accepted and implemented | **Date:** 2026-09-28
 **Participants:** Marc Bielert, Codex
 
 ## Context

@@ -18,6 +18,7 @@ $mount = "type=bind,source=$PSScriptRoot,target=/work"
 if ($Clean) {
     docker run --rm --mount $mount dustline-build:1 make clean
     if ($LASTEXITCODE -ne 0) { throw 'Clean failed.' }
+    New-Item -ItemType Directory -Force 'build' | Out-Null
 }
 docker run --rm --mount $mount dustline-build:1 python3 tools/generate_assets.py
 if ($LASTEXITCODE -ne 0) { throw 'Asset generation failed.' }

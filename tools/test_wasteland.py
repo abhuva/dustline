@@ -30,8 +30,11 @@ class Reference:
                 branch=compile_recipe(self.recipe,self.recipe[key]);file=folder/(key+'.program')
                 file.write_bytes(pack_program(branch));arg=str(file)
             placements.append(arg)
-        portal_file=folder/'active-portals.bin'
-        portal_file.write_bytes(b''.join(struct.pack('<HH',item['x'],item['y']) for item in self.recipe['portals']))
+        portal_file=folder/'active-exits.bin';map_id=maps[api.state()['map']]['id'];sides=('north','east','south','west');exit_mask=0
+        for link in library['world']['connections']:
+            if link['a']['map']==map_id:exit_mask|=1<<sides.index(link['a']['side'])
+            if link['b']['map']==map_id:exit_mask|=1<<sides.index(link['b']['side'])
+        portal_file.write_bytes(bytes([exit_mask]))
         subprocess.run([str(folder/'map_recipe_bridge'),str(program),str(seed),str(path),material_arg,*placements,str(portal_file)],check=True)
         data=path.read_bytes();meta=struct.unpack_from('<20I',data)
         self.info=(64,64,seed,meta[4],meta[5],meta[3],meta[6],meta[7])

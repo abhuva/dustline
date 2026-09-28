@@ -32,7 +32,10 @@ def run(t):
                         dx=s['x']-e['x']; dy=s['y']-e['y']; angle=math.radians(e['heading'])
                         front=math.cos(angle)*dx+math.sin(angle)*dy
                         side=-math.sin(angle)*dx+math.cos(angle)*dy
-                        sensed |= front>0 and abs(side)*6<front+8 and math.hypot(dx,dy)<136
+                        # Runtime aiming uses integer fixed-point positions before
+                        # the shot advances one frame; telemetry exposes rounded
+                        # post-step positions. Keep a one-pixel/one-frame margin.
+                        sensed |= front>-1 and abs(side)*6<front+14 and math.hypot(dx,dy)<140
                     valid_shots &= sensed
         last_shots=c['enemy_shots']; previous=c
         if frame%60==0: samples.append(t.capture(f'traffic/idle-{frame:04d}'))

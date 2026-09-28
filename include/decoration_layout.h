@@ -33,7 +33,8 @@ struct decoration_layout {
         bool floor=!cave.wall(x/128,y/128) && !cave.wall((x+16)/128,y/128) &&
             !cave.wall(x/128,(y+16)/128) && !cave.wall((x+16)/128,(y+16)/128);
         for(int yy=0;yy<=16;yy+=8)for(int xx=0;xx<=16;xx+=8) {
-            if((!floor && cave.solid(x+xx,y+yy)) ||
+            if((roads && roads->is_reserved((x+xx)/128,(y+yy)/128)) ||
+               (!floor && cave.solid(x+xx,y+yy)) ||
                (exclude_roads && roads && roads->width && roads->contains(x+xx,y+yy)))return 0;
         }
         int total=weights[0]+weights[1]+weights[2]+weights[3];

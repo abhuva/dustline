@@ -48,10 +48,10 @@ struct road_network {
         }
     }
 
-    // Extend the generated network to an authored portal. The search starts at
-    // the portal's logical cell and stops at the first existing road, so it
+    // Extend the generated network to an exit anchor. The search starts at
+    // the anchor's logical cell and stops at the first existing road, so it
     // finds the shortest traversable connection without crossing canyon walls.
-    // Existing access branches are valid destinations for later portals.
+    // Existing access branches are valid destinations for later exits.
     bool connect_portal(const cave_layout& layout,cave_scratch& scratch,int world_x,int world_y) {
         if(!width || layout.solid(world_x,world_y) || layout.town_solid(world_x,world_y))return false;
         const int target_x=world_x/cave_layout::cell_size,target_y=world_y/cave_layout::cell_size;

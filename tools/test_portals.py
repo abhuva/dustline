@@ -1,4 +1,4 @@
-"""Controller-driven checks for Portal-to-Player-Spawn region travel."""
+"""Controller-driven checks for reciprocal cardinal region travel."""
 import json
 import math
 import heapq
@@ -86,34 +86,29 @@ def drive_floor_route(reference,x,y):
 
 def run():
     (t.OUT/'portals').mkdir(exist_ok=True)
-    # Pick any currently authored reciprocal pair. Map catalog edits should not
-    # require rewriting this transition regression.
     links=t.MAP_LIBRARY['world']['connections'];by_id={entry['id']:i for i,entry in enumerate(t.GAME_MAPS)}
-    entries={entry['id']:entry for entry in t.GAME_MAPS}
-    pairs=[(link,reverse) for link in links for reverse in links
-           if reverse['from']['map']==link['to']['map'] and reverse['to']['map']==link['from']['map']]
-    def approach_distance(pair):
-        link=pair[0];recipe=entries[link['from']['map']]['recipe']
-        portal=next(item for item in recipe['portals'] if item['id']==link['from']['portal'])
-        spawn=next(item for item in recipe['playerSpawns'] if item['id']=='start')
-        return math.dist((portal['x'],portal['y']),(spawn['x'],spawn['y']))
-    pair=min(pairs,key=approach_distance)
-    outward,back=pair;origin_map=by_id[outward['from']['map']];destination_map=by_id[outward['to']['map']]
+    sides=('north','east','south','west')
+    triggers={'north':(4096,96),'east':(8096,4096),'south':(4096,8096),'west':(96,4096)}
+    arrivals={'north':(4096,448,90),'east':(7744,4096,180),'south':(4096,7744,270),'west':(448,4096,0)}
+    # Exercise the closest current border from its manual New Game start.
+    candidates=[]
+    for link in links:
+        for source,destination in ((link['a'],link['b']),(link['b'],link['a'])):
+            spawn=next(item for item in t.GAME_MAPS[by_id[source['map']]]['recipe']['playerSpawns'] if item['id']=='start')
+            candidates.append((math.dist((spawn['x'],spawn['y']),triggers[source['side']]),source,destination))
+    _,outward,back=min(candidates)
+    origin_map=by_id[outward['map']];destination_map=by_id[back['map']]
     start=t.start_map(origin_map);signature=start['signature'];initial_generation=start['generations']
     reference=Reference(t,start['seed'])
-    origin_portals=t.GAME_MAPS[origin_map]['recipe']['portals'];destination_portals=t.GAME_MAPS[destination_map]['recipe']['portals']
-    source_index=next(i for i,item in enumerate(origin_portals) if item['id']==outward['from']['portal'])
-    source=origin_portals[source_index]
-    destination_return=next(item for item in destination_portals if item['id']==back['from']['portal'])
-    destination_arrival=next(item for item in t.GAME_MAPS[destination_map]['recipe']['playerSpawns'] if item['id']==outward['to']['spawn'])
-    origin_arrival=next(item for item in t.GAME_MAPS[origin_map]['recipe']['playerSpawns'] if item['id']==back['to']['spawn'])
-    assert drive_floor_route(reference,source['x'],source['y'])
+    source_index=sides.index(outward['side']);source=triggers[outward['side']]
+    destination_return=triggers[back['side']];destination_arrival=arrivals[back['side']];origin_arrival=arrivals[outward['side']]
+    assert drive_floor_route(reference,*source)
     prompt=t.portal_state();t.step(0,1);t.capture('portals/travel-prompt')
-    t.check('Entering an authored Portal opens a destination confirmation',
+    t.check('Entering a derived cardinal trigger opens a destination confirmation',
             prompt['prompt'] and prompt['current_portal']==source_index and prompt['destination_map']==destination_map,prompt)
 
     t.tap(t.B);declined=t.portal_state();t.step(0,12)
-    t.check('Declining suppresses the Portal while the car remains inside it',
+    t.check('Declining suppresses the exit while the car remains inside it',
             t.state()['mode']==1 and declined['ignored_portal']==source_index and not t.portal_state()['prompt'],t.portal_state())
     for _ in range(120):
         if t.portal_state()['ignored_portal']==-1:break
@@ -125,32 +120,54 @@ def run():
         if t.portal_state()['prompt']:break
         t.step(t.B)
     if not t.portal_state()['prompt']:
-        assert drive_floor_route(reference,source['x'],source['y'])
+        assert drive_floor_route(reference,*source)
     rearmed=t.portal_state()['ignored_portal']==-1
-    t.check('Leaving and returning immediately rearms the same Portal',
+    t.check('Leaving and returning immediately rearms the same exit',
             rearmed and t.portal_state()['prompt'] and t.portal_state()['current_portal']==source_index,t.portal_state())
 
     initial_loadout={key:t.weapon_state()[key] for key in ('front','side','special','energy')}
     destination=accept_portal();after=t.portal_state();loadout=t.weapon_state();t.step(0,1);t.capture('portals/arrived-region')
-    t.check('Confirming loads the connected region at its authored arrival',
+    t.check('Confirming loads the connected region at its derived opposite-side arrival',
             destination['map']==destination_map and after['visits']==1 and destination['generations']==initial_generation+1 and
-            math.dist((destination['x'],destination['y']),(destination_arrival['x'],destination_arrival['y']))<3 and abs(t.angle_delta(destination_arrival['heading'],destination['heading']))<2,
+            math.dist((destination['x'],destination['y']),destination_arrival[:2])<3 and abs(t.angle_delta(destination_arrival[2],destination['heading']))<2,
             dict(state=destination,portal=after))
     t.check('Travel preserves the global fitted loadout and energy',
             all(loadout[key]==value for key,value in initial_loadout.items()),dict(before=initial_loadout,after=loadout))
 
     t.step(0,3)
-    drive_toward(destination_return['x'],destination_return['y'],True,180)
-    if not t.portal_state()['prompt'] or t.portal_state()['portal_y']!=destination_return['y']:
-        raise AssertionError(f'Could not return to destination Portal: {t.state()} / {t.portal_state()}')
+    drive_toward(*destination_return,True,300)
+    if not t.portal_state()['prompt']:
+        raise AssertionError(f'Could not return through destination exit: {t.state()} / {t.portal_state()}')
     returned=accept_portal();after_return=t.portal_state();t.step(0,1);t.capture('portals/returned-region')
-    t.check('The destination Portal permits an immediate return trip',
+    t.check('The reciprocal destination side permits a return trip without using New Game spawn',
             returned['map']==origin_map and after_return['visits']==2 and
-            math.dist((returned['x'],returned['y']),(origin_arrival['x'],origin_arrival['y']))<3 and abs(t.angle_delta(origin_arrival['heading'],returned['heading']))<2,
+            math.dist((returned['x'],returned['y']),origin_arrival[:2])<3 and abs(t.angle_delta(origin_arrival[2],returned['heading']))<2,
             dict(state=returned,portal=after_return))
     t.check('Revisiting regenerates the region from its fixed recipe',
             returned['generations']==initial_generation+2 and returned['signature']==signature,
             dict(first=signature,returned=returned['signature'],generations=returned['generations']))
+
+    # Traverse every authored border in both directions. Together the current
+    # L-shaped world exercises north/south and east/west arrivals on real ROM.
+    covered=set()
+    for link in links:
+        source,target=link['a'],link['b'];source_map=by_id[source['map']];target_map=by_id[target['map']]
+        if t.state()['mode']==1:t.tap(t.START)
+        if t.state()['mode']==2:t.tap(t.SELECT)
+        state=t.start_map(source_map);ref=Reference(t,state['seed'])
+        assert drive_floor_route(ref,*triggers[source['side']])
+        arrived=accept_portal();expected=arrivals[target['side']]
+        t.check(f"{link['id']} arrives inward from {target['side']}",
+                arrived['map']==target_map and math.dist((arrived['x'],arrived['y']),expected[:2])<3 and
+                abs(t.angle_delta(expected[2],arrived['heading']))<2,arrived)
+        covered.update((source['side'],target['side']))
+        target_ref=Reference(t,arrived['seed'])
+        assert drive_floor_route(target_ref,*triggers[target['side']])
+        returned=accept_portal();expected=arrivals[source['side']]
+        t.check(f"{link['id']} returns inward from {source['side']}",
+                returned['map']==source_map and math.dist((returned['x'],returned['y']),expected[:2])<3 and
+                abs(t.angle_delta(expected[2],returned['heading']))<2,returned)
+    t.check('ROM travel covers all four cardinal sides',covered==set(sides),sorted(covered))
 
 
 if __name__=='__main__':

@@ -42,7 +42,7 @@ def run(t):
     loose_map=next((i for i,entry in enumerate(t.GAME_MAPS) if entry['id']=='voronoi-passages'),None)
     if loose_map is not None:
         t.start_map(loose_map)
-        # The authored Portal access road now runs through the old straight-line
+        # The derived cardinal-exit access road runs through the old straight-line
         # sample route. Turn off that branch first, then measure loose ground.
         loose_samples=[t.step(t.A|t.RIGHT) for _ in range(30)]
         loose_samples.extend(t.step(t.A) for _ in range(70))
@@ -105,43 +105,52 @@ def run(t):
             opened['generations']==before['generations'] and opened['signature']==before['signature'],opened)
     def overview_pixel(x,y):
         return map_view.getpixel((96+int(x)//64,16+int(y)//64))
+    map_id=t.GAME_MAPS[opened['map']]['id'];sides=('north','east','south','west')
+    exit_sides=[]
+    for link in t.MAP_LIBRARY['world']['connections']:
+        for endpoint in ('a','b'):
+            if link[endpoint]['map']==map_id:exit_sides.append(sides.index(link[endpoint]['side']))
+    profile=json.loads((t.ROOT/'data/cardinal-exit-profile.json').read_text())
+    extent=8192;middle=extent//2;depth=profile['triggerDepth']
+    exit_points={0:(middle,depth//2),1:(extent-depth//2,middle),
+                 2:(middle,extent-depth//2),3:(depth//2,middle)}
     player_color=overview_pixel(opened['x'],opened['y'])
-    portal_colors=[overview_pixel(item['x'],item['y']) for item in t.GAME_MAPS[opened['map']]['recipe']['portals']]
-    t.check('Full map uses a red player cross and green authored Portals',
+    exit_colors=[overview_pixel(*exit_points[side]) for side in exit_sides]
+    t.check('Full map uses a red player cross and green cardinal exits',
             player_color[0]>player_color[1]*2 and player_color[0]>player_color[2]*2 and
-            portal_colors and all(color[1]>color[0]*2 and color[1]>color[2]*2 for color in portal_colors),
-            dict(player=player_color,portals=portal_colors))
+            exit_colors and all(color[1]>color[0]*2 and color[1]>color[2]*2 for color in exit_colors),
+            dict(player=player_color,exits=exit_colors))
     initial_map_selection=t.settings_state()
     t.tap(t.RIGHT);town_selection=t.settings_state();town_view=t.capture('settings/map-town-highlight')
     for _ in range(6):t.tap(t.RIGHT)
-    portal_selection=t.settings_state();portal_view=t.capture('settings/map-portal-highlight')
+    exit_selection=t.settings_state();exit_view=t.capture('settings/map-exit-highlight')
     t.tap(t.LEFT);previous_selection=t.settings_state()
-    for _ in range(len(t.GAME_MAPS[opened['map']]['recipe']['portals'])+1):t.tap(t.RIGHT)
+    for _ in range(len(exit_sides)+1):t.tap(t.RIGHT)
     wrapped_player=t.settings_state()
     t.tap(t.LEFT);reverse_wrapped=t.settings_state();t.tap(t.RIGHT)
-    t.check('Map Left/Right cycles Player, all towns and all Portals in both directions',
+    t.check('Map Left/Right cycles Player, all towns and all cardinal exits in both directions',
             initial_map_selection['map_selection']==0 and initial_map_selection['map_selection_kind']==0 and
             town_selection['map_selection']==1 and town_selection['map_selection_kind']==1 and
-            town_selection['map_selection_index']==0 and portal_selection['map_selection']==7 and
-            portal_selection['map_selection_kind']==2 and portal_selection['map_selection_index']==0 and
+            town_selection['map_selection_index']==0 and exit_selection['map_selection']==7 and
+            exit_selection['map_selection_kind']==2 and exit_selection['map_selection_index']==0 and
             previous_selection['map_selection']==6 and
             wrapped_player['map_selection']==0 and wrapped_player['map_selection_kind']==0 and
             reverse_wrapped['map_selection']==initial_map_selection['map_selection_count']-1 and
             reverse_wrapped['map_selection_kind']==2 and
-            initial_map_selection['map_selection_count']==1+6+len(t.GAME_MAPS[opened['map']]['recipe']['portals']),
-            dict(initial=initial_map_selection,town=town_selection,portal=portal_selection,
+            initial_map_selection['map_selection_count']==1+6+len(exit_sides),
+            dict(initial=initial_map_selection,town=town_selection,exit=exit_selection,
                  previous=previous_selection,wrapped=wrapped_player,reverse_wrapped=reverse_wrapped))
     def bright_pixels(image,x,y):
         sx=96+int(x)//64;sy=16+int(y)//64
         return sum(max(image.getpixel((px,py)))-min(image.getpixel((px,py)))>80
                    for py in range(max(0,sy-8),min(160,sy+9))
                    for px in range(max(0,sx-8),min(240,sx+9)))
-    first_town=ref.towns[0];first_portal=t.GAME_MAPS[opened['map']]['recipe']['portals'][0]
-    t.check('Selected towns and Portals receive a large high-contrast map marker',
+    first_town=ref.towns[0];first_exit=exit_points[exit_sides[0]]
+    t.check('Selected towns and cardinal exits receive a large high-contrast map marker',
             bright_pixels(town_view,*first_town)>20 and
-            bright_pixels(portal_view,first_portal['x'],first_portal['y'])>20,
+            bright_pixels(exit_view,*first_exit)>20,
             dict(town=bright_pixels(town_view,*first_town),
-                 portal=bright_pixels(portal_view,first_portal['x'],first_portal['y'])))
+                 exit=bright_pixels(exit_view,*first_exit)))
     frozen=t.step(0,40)
     t.check('Select menu freezes position, velocity and simulation time',all(frozen[k]==opened[k] for k in
             ('x','y','vx','vy','heading','lap_frames','seed','signature')),frozen)

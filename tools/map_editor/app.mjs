@@ -63,7 +63,7 @@ try {
 const worker = new Worker('./worker.mjs', {type:'module'});
 worker.onerror = event => message(`Engine could not load: ${event.message}. Run ./map-editor.ps1 to rebuild it.`, 'error');
 worker.onmessage = ({data}) => {
-  if(data.atlas){if(data.id!==atlasRequest)return;drawAtlas(data.maps);$('atlas-status').textContent=`${data.maps.length} regions · derived from reciprocal connections`;return;}
+  if(data.atlas){if(data.id!==atlasRequest)return;drawAtlas(data.maps);const components=new Set(data.maps.map(map=>map.component)).size;$('atlas-status').textContent=`${data.maps.length} regions · ${components} ${components===1?'component':'disconnected components'} · derived from reciprocal connections`;return;}
   if(data.render){
     if(data.id!==renderRequest)return;
     if(data.error){renderBusy=false;$('render-status').textContent=data.error;$('render-map').disabled=false;return;}
@@ -571,14 +571,14 @@ function generate() {
     $('export').disabled=Boolean(exportError); $('export').title=exportError||'Download the procedural recipe';
     $('recipe-status').textContent=(final?`${recipe.nodes.length} NODES · WALL/FLOOR + ${materialProgram?'GROUND IDS':'ORIGINAL GROUND'} · v${recipe.version}`:`${recipe.nodes.length} NODES · OUTPUT NEEDS A CONNECTION`)+` · ${dirty?'UNSAVED':'SAVED'}`;
     $('render-map').disabled=renderBusy || Boolean(exportError) || !final;
-    $('preview-title').textContent=view==='seeds'?'Nine possibilities':view==='placements'?'Portal & spawn layout':node.label;
+    $('preview-title').textContent=view==='seeds'?'Nine possibilities':view==='placements'?'Exit overlay & manual spawns':node.label;
     $('preview-label').textContent=view==='seeds'?'CLICK A SEED TO EXPLORE':compiled.kind==='field'?'FIELD · 0—255':compiled.kind==='material'?'GROUND MATERIAL IDS · 0—255':$('layer').value==='textures'?'GAME TEXTURES · 8192 × 8192':'64 × 64 / 8192 px';
     const compare=!placement && view==='compare' && node.inputs?.a ? compile(previewRecipe,schema,node.inputs.a,false).program : null;
     const seeds=view==='seeds'?Array.from({length:9},(_,i)=>(recipe.seed+i)>>>0):null;
     message(exportError || 'Generating…',exportError?'warning':'');
     const categoricalColors=node?.type==='field_lut'?lutPreviewColors(node):null;
     const schematic=view==='placements';
-    worker.postMessage({id:sequence,mapId:currentId,program:compiled.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,exitMask:worldExitMask(currentId),portals:recipe.portals,playerSpawns:recipe.playerSpawns,histogramProgram,histogramNode:histogramProgram?settingsNode.id:null,categorical:!!categoricalColors,categoricalColors,showSpawns:$('show-spawns').checked,seed:recipe.seed,schematic,collision:(schematic||$('layer').value==='collision')&&!seeds,textures:!schematic&&$('layer').value==='textures',seeds,compare});
+    worker.postMessage({id:sequence,mapId:currentId,program:compiled.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,exitMask:worldExitMask(currentId),portals:[],playerSpawns:recipe.playerSpawns,histogramProgram,histogramNode:histogramProgram?settingsNode.id:null,categorical:!!categoricalColors,categoricalColors,showSpawns:$('show-spawns').checked,seed:recipe.seed,schematic,collision:(schematic||$('layer').value==='collision')&&!seeds,textures:!schematic&&$('layer').value==='textures',seeds,compare});
   } catch(error) {
     $('export').disabled=true; $('preview').setAttribute('aria-busy','false');
     $('preview-label').textContent='INVALID GRAPH · PREVIOUS PREVIEW'; message(error.message,'error');
@@ -626,7 +626,7 @@ function markers(ctx,output,x,y,size) {
     else {ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();ctx.stroke();}
   }
 }
-function placementItems(){return [...recipe.portals.map(item=>({kind:'portal',item})),...recipe.playerSpawns.map(item=>({kind:'spawn',item}))];}
+function placementItems(){return recipe.playerSpawns.map(item=>({kind:'spawn',item}));}
 function placementKey(kind,id){return `${kind}:${id}`;}
 function selectedPlacement(){return placementItems().find(value=>placementKey(value.kind,value.item.id)===placementSelection)??null;}
 function placementScreen(x,y){const size=640*placementZoom;return {x:placementPanX+x/8192*size,y:placementPanY+y/8192*size};}
@@ -688,7 +688,7 @@ function draw(data) {
   ];
   if(first.meta[1]===3){items[0]=['Material IDs',String(new Set(first.cells).size),'distinct'];items[1]=['ID range',`${min}—${max}`,''];}
   if(first.spawns){items[0]=['Spawn locations',String(first.spawns.length/2),first.requestedSpawns==null?'legacy':`/ ${first.requestedSpawns} requested`];items[1]=['Decoration patches',String(first.patches??0),'cosmetic'];}
-  if(placementView){items[0]=['Portals',String(recipe.portals.length),`${first.invalidPortals?.length??0} invalid`];items[1]=['Player spawns',String(recipe.playerSpawns.length),`${first.invalidPlayerSpawns?.length??0} invalid`];}
+  if(placementView){items[0]=['Connected exits',String(cardinalSides.filter((_side,index)=>first.exitMask&(1<<index)).length),'derived from world'];items[1]=['Manual spawns',String(recipe.playerSpawns.length),`${first.invalidPlayerSpawns?.length??0} invalid`];}
   $('metrics').replaceChildren(...items.map(([name,value,unit])=>{
     const metric=element('div','metric');metric.append(element('span','',name));
     const strong=element('strong','',value);strong.append(element('small','',unit));metric.append(strong);return metric;
@@ -703,7 +703,6 @@ function draw(data) {
   const unknown=[...new Set(data.outputs.flatMap(o=>o.unknown??[]))];
   if(first.requestedSpawns!=null && first.spawns.length/2<first.requestedSpawns)text+=` Placed ${first.spawns.length/2}/${first.requestedSpawns} spawns: floor, probability field or spacing limits available anchors.`;
   if(unknown.length)text+=` Unassigned material IDs: ${unknown.join(', ')}. IDs are preserved; game art and grip fall back to sand.`;
-  if(placementView && first.invalidPortals?.length)text+=` Portal access needs drivable floor: ${first.invalidPortals.join(', ')}.`;
   if(placementView && first.invalidPlayerSpawns?.length)text+=` Player Spawns need drivable floor: ${first.invalidPlayerSpawns.join(', ')}.`;
   try {const valid=compile(recipe,schema);if(valid.kind!=='world')text+=' Choose a Playable world output to export.';}catch(error){text+=` Export unavailable: ${error.message}`;}
   message(text,fallback||unknown.length?'warning':'');
@@ -728,7 +727,7 @@ function renderPlacementControls(){
   const active=$('view').value==='placements';$('placement-tools').hidden=!active;$('placement-inspector').hidden=!active;$('placement-viewport').classList.toggle('placement-active',active);$('placement-viewport').closest('.preview-panel').classList.toggle('placement-mode',active);if(!active)return;
   const items=placementItems();if(!items.some(value=>placementKey(value.kind,value.item.id)===placementSelection))placementSelection=items.length?placementKey(items[0].kind,items[0].item.id):null;
   const list=$('placement-list');list.replaceChildren(...items.map(({kind,item})=>{const option=element('option','',`${kind==='portal'?'PORTAL':'SPAWN'} · ${item.id}`);option.value=placementKey(kind,item.id);return option;}));list.value=placementSelection??'';
-  const selected=selectedPlacement(),root=$('placement-inspector');root.replaceChildren();if(!selected){root.append(element('span','muted','Add a Portal or Player Spawn, then click the map to place it.'));return;}
+  const selected=selectedPlacement(),root=$('placement-inspector');root.replaceChildren();if(!selected){root.append(element('span','muted','Add a manual Player Spawn, then click the map to place it. Cardinal exits come from the World Map.'));return;}
   const field=(label,key,min,max,className='')=>{const wrapper=element('label',className,label),input=element('input');input.type=key==='id'?'text':'number';input.value=selected.item[key];if(key==='id'){input.maxLength=24;input.pattern='[a-z0-9]+(?:_[a-z0-9]+)*';}else{input.min=min;input.max=max;input.step=1;}input.setAttribute('aria-label',`${selected.kind==='portal'?'Portal':'Player spawn'} ${label}`);input.onchange=()=>{let value=key==='id'?input.value.trim():Number(input.value);const siblings=selected.kind==='portal'?recipe.portals:recipe.playerSpawns;if(!input.validity.valid||value===''||(key==='id'&&siblings.some(item=>item!==selected.item&&item.id===value))){input.value=selected.item[key];return;}change(()=>{selected.item[key]=value;if(key==='id')placementSelection=placementKey(selected.kind,value);recipe.version=Math.max(6,recipe.version);});renderPlacementControls();};wrapper.append(input);root.append(wrapper);};
   field('ID','id',0,0,'placement-id');field('X','x',0,8191);field('Y','y',0,8191);if(selected.kind==='portal'){field('Width','width',16,512);field('Height','height',16,512);}else field('Heading','heading',0,359);
   const actions=element('div','placement-actions'),duplicate=element('button','','Duplicate'),remove=element('button','danger','Delete');duplicate.onclick=()=>change(()=>{const items=selected.kind==='portal'?recipe.portals:recipe.playerSpawns,item=clone(selected.item);item.id=uniquePlacementId(selected.kind==='portal'?'portal':'spawn',items);item.x=Math.min(8191,item.x+64);item.y=Math.min(8191,item.y+64);items.push(item);placementSelection=placementKey(selected.kind,item.id);});remove.onclick=()=>change(()=>{const items=selected.kind==='portal'?recipe.portals:recipe.playerSpawns,index=items.indexOf(selected.item);if(index>=0)items.splice(index,1);placementSelection=null;});actions.append(duplicate);
@@ -1013,10 +1012,11 @@ $('save-world').onclick=async()=>{
 };
 function drawAtlas(maps){
   const tile=128,padding=28,minX=Math.min(...maps.map(map=>map.grid[0])),minY=Math.min(...maps.map(map=>map.grid[1])),maxX=Math.max(...maps.map(map=>map.grid[0])),maxY=Math.max(...maps.map(map=>map.grid[1])),canvas=$('atlas-canvas');canvas.width=(maxX-minX+1)*tile+padding*2;canvas.height=(maxY-minY+1)*tile+padding*2;const ctx=canvas.getContext('2d');ctx.fillStyle='#0d1511';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.font='8px Consolas';ctx.textBaseline='top';
-  for(const map of maps){const ox=padding+(map.grid[0]-minX)*tile,oy=padding+(map.grid[1]-minY)*tile,image=ctx.createImageData(tile,tile);for(let y=0;y<tile;++y)for(let x=0;x<tile;++x){const wall=map.cells[(y>>1)*64+(x>>1)],road=map.roads[y*tile+x],color=wall?[34,57,47]:road?[177,137,80]:[202,187,145];image.data.set([...color,255],(y*tile+x)*4);}ctx.putImageData(image,ox,oy);ctx.strokeStyle='#eac35b';ctx.strokeRect(ox+.5,oy+.5,tile-1,tile-1);for(let town=0;town<6;++town){const x=ox+map.meta[8+town*2]/64,y=oy+map.meta[9+town*2]/64;ctx.fillStyle='#effbc6';ctx.fillRect(x-2,y-2,4,4);}ctx.fillStyle='#102019dd';ctx.fillRect(ox+3,oy+3,Math.min(120,map.id.length*5+6),12);ctx.fillStyle='#effbc6';ctx.fillText(map.id,ox+6,oy+5);}
+  const componentColors=['#eac35b','#e56f51','#69b7d5','#a68bd5'];
+  for(const map of maps){const ox=padding+(map.grid[0]-minX)*tile,oy=padding+(map.grid[1]-minY)*tile,image=ctx.createImageData(tile,tile);for(let y=0;y<tile;++y)for(let x=0;x<tile;++x){const wall=map.cells[(y>>1)*64+(x>>1)],road=map.roads[y*tile+x],color=wall?[34,57,47]:road?[177,137,80]:[202,187,145];image.data.set([...color,255],(y*tile+x)*4);}ctx.putImageData(image,ox,oy);ctx.strokeStyle=componentColors[map.component%componentColors.length];ctx.strokeRect(ox+.5,oy+.5,tile-1,tile-1);for(let town=0;town<6;++town){const x=ox+map.meta[8+town*2]/64,y=oy+map.meta[9+town*2]/64;ctx.fillStyle='#effbc6';ctx.fillRect(x-2,y-2,4,4);}ctx.fillStyle='#102019dd';ctx.fillRect(ox+3,oy+3,Math.min(120,map.id.length*5+6),12);ctx.fillStyle='#effbc6';ctx.fillText(map.id,ox+6,oy+5);}
   const zoom=Number($('atlas-zoom').value);canvas.style.width=`${canvas.width*zoom}px`;canvas.style.height=`${canvas.height*zoom}px`;
 }
-$('open-atlas').onclick=()=>{const maps=effectiveWorldMaps(),derived=derivedWorldGrid(maps);if(derived.error){$('world-status').textContent=derived.error;return;}atlasRequest++;$('atlas-status').textContent='Generating clean schematics…';$('atlas-dialog').showModal();const payload=maps.map(entry=>{const compiled=compile(entry.recipe,schema);if(compiled.kind!=='world')throw new Error(`${entry.id} needs a Playable world output.`);const coordinate=derived.coordinates.get(entry.id);return {id:entry.id,program:compiled.program,seed:entry.recipe.seed,exitMask:worldExitMask(entry.id,worldDraft),grid:[coordinate[0],coordinate[1]]};});worker.postMessage({id:atlasRequest,atlas:true,maps:payload});};
+$('open-atlas').onclick=()=>{const maps=effectiveWorldMaps(),derived=derivedWorldGrid(maps);if(derived.error){$('world-status').textContent=derived.error;return;}atlasRequest++;$('atlas-status').textContent='Generating clean schematics…';$('atlas-dialog').showModal();const bounds=new Map();for(const coordinate of derived.coordinates.values()){const [x,,component]=coordinate,old=bounds.get(component)??[x,x];bounds.set(component,[Math.min(old[0],x),Math.max(old[1],x)]);}const offsets=new Map();let cursor=0;for(const component of [...bounds.keys()].sort((a,b)=>a-b)){const [minimum,maximum]=bounds.get(component);offsets.set(component,cursor-minimum);cursor+=maximum-minimum+2;}const payload=maps.map(entry=>{const compiled=compile(entry.recipe,schema);if(compiled.kind!=='world')throw new Error(`${entry.id} needs a Playable world output.`);const coordinate=derived.coordinates.get(entry.id),component=coordinate[2];return {id:entry.id,program:compiled.program,seed:entry.recipe.seed,exitMask:worldExitMask(entry.id,worldDraft),grid:[coordinate[0]+offsets.get(component),coordinate[1]],component};});worker.postMessage({id:atlasRequest,atlas:true,maps:payload});};
 $('atlas-zoom').onchange=()=>{const canvas=$('atlas-canvas'),zoom=Number($('atlas-zoom').value);canvas.style.width=`${canvas.width*zoom}px`;canvas.style.height=`${canvas.height*zoom}px`;};
 $('close-atlas').onclick=()=>$('atlas-dialog').close();
 document.querySelector('.section-label span').textContent=schema.operations.length;
@@ -1128,7 +1128,7 @@ $('render-map').onclick=()=>{
     $('render-image').removeAttribute('src');$('render-status').textContent='Rendering full map…';$('render-dialog').showModal();
     const spawnProgram=recipe.spawnOutput==null?null:compile(previewRecipe,schema,recipe.spawnOutput).program;
     const decorationProgram=recipe.decorationOutput==null?null:compile(previewRecipe,schema,recipe.decorationOutput).program;
-    worker.postMessage({id:renderRequest,render:true,mapId:currentId,program:world.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,exitMask:worldExitMask(currentId),portals:recipe.portals,playerSpawns:recipe.playerSpawns,showSpawns:$('show-spawns').checked,seed:recipe.seed});
+    worker.postMessage({id:renderRequest,render:true,mapId:currentId,program:world.program,materialProgram,spawnProgram,decorationProgram,spawnProfiles:recipe.spawnProfiles,exitMask:worldExitMask(currentId),portals:[],playerSpawns:recipe.playerSpawns,showSpawns:$('show-spawns').checked,seed:recipe.seed});
   }catch(error){message(error.message,'error');}
 };
 $('close-render').onclick=()=>$('render-dialog').close();
@@ -1141,7 +1141,6 @@ $('preview').onclick=event=>{
   const output=lastResponse.outputs[Math.min(2,Math.floor(y*3))*3+Math.min(2,Math.floor(x*3))];
   if(output)change(()=>{recipe.seed=output.seed;$('view').value='final';});
 };
-$('add-portal').onclick=()=>{placementAddKind=placementAddKind==='portal'?null:'portal';message(placementAddKind?'Click the schematic to place the Portal.':'Portal placement cancelled.');};
 $('add-player-spawn').onclick=()=>{placementAddKind=placementAddKind==='spawn'?null:'spawn';message(placementAddKind?'Click the schematic to place the Player Spawn.':'Player Spawn placement cancelled.');};
 $('placement-list').onchange=()=>{placementSelection=$('placement-list').value||null;renderPlacementControls();if(lastResponse)draw(lastResponse);};
 $('placement-focus').onclick=focusPlacement;

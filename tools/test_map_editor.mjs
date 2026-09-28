@@ -103,9 +103,15 @@ if(process.argv.includes('--prepare')) {
   const library=JSON.parse(await readFile(new URL('maps/map-library.json',root),'utf8')),active=library.maps.find(entry=>entry.id==='wasteland').recipe,program=compile(active,schema).program;
   engine.HEAPU32.set(new Uint32Array(program.flat()),engine._recipe_input()>>>2);assert.equal(engine._recipe_run(program.length,active.seed),0);assert.equal(engine._recipe_apply_exits(15),0);
   const cells=engine.HEAPU8.slice(engine._recipe_cells(),engine._recipe_cells()+4096);assert.equal(cells[31],0);assert.equal(cells[31*64+63],0);assert.equal(cells[63*64+31],0);assert.equal(cells[31*64],0);
-  const reserved=engine._recipe_reserved();assert.ok(engine.HEAPU8.slice(reserved,reserved+1024*1024).some(Boolean));
+  const reservedPtr=engine._recipe_reserved(),reserved=engine.HEAPU8.slice(reservedPtr,reservedPtr+1024*1024);assert.ok(reserved.some(Boolean));
+  const spawnProgram=compile(active,schema,active.spawnOutput).program;engine.HEAPU32.set(new Uint32Array(spawnProgram.flat()),engine._recipe_input()>>>2);assert.equal(engine._recipe_run(spawnProgram.length,active.seed),0);assert.equal(engine._recipe_apply_spawns(),0);
+  const spawnCount=engine._recipe_spawn_count(),spawnPtr=engine._recipe_spawns()>>>1,spawns=engine.HEAPU16.slice(spawnPtr,spawnPtr+spawnCount*2);
+  for(let index=0;index<spawnCount;++index)assert.equal(reserved[(spawns[index*2+1]>>3)*1024+(spawns[index*2]>>3)],0,'enemy spawn in reserved exit corridor');
+  const decorationProgram=compile(active,schema,active.decorationOutput).program;engine.HEAPU32.set(new Uint32Array(decorationProgram.flat()),engine._recipe_input()>>>2);assert.equal(engine._recipe_run(decorationProgram.length,active.seed),0);assert.equal(engine._recipe_apply_decoration(),0);
+  const decorationPtr=engine._recipe_decorations(),decorations=engine.HEAPU8.slice(decorationPtr,decorationPtr+1024*1024);
+  for(let index=0;index<decorations.length;++index)if(reserved[index])assert.equal(decorations[index],0,'decoration in reserved exit corridor');
   const report={cases:fixtures.length,legacySeeds:128,nativeWasmByteParity:true,graphValidation:true,wasmSha256:(await import('node:crypto')).createHash('sha256').update(await readFile(new URL('tools/map_editor/generated/engine.wasm',root))).digest('hex')};
   await mkdir(new URL('artifacts/map_editor/',root),{recursive:true});
   await writeFile(new URL('artifacts/map_editor/parity-results.json',root),JSON.stringify(report,null,2)+'\n');
-  console.log(`PASS ${fixtures.length} native / WebAssembly byte comparisons, including metadata, maps, spawn and outposts.`);
+  console.log(`PASS ${fixtures.length} native / WebAssembly byte comparisons; cardinal corridors exclude encounters and decorations.`);
 }

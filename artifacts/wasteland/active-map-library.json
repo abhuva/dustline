@@ -507,39 +507,12 @@
             "energyMax": 24
           }
         ],
-        "portals": [
-          {
-            "id": "north",
-            "x": 3709,
-            "y": 300,
-            "width": 277,
-            "height": 205
-          },
-          {
-            "id": "south",
-            "x": 7030,
-            "y": 3916,
-            "width": 329,
-            "height": 186
-          }
-        ],
+        "portals": [],
         "playerSpawns": [
           {
             "id": "start",
             "x": 4160,
             "y": 4176,
-            "heading": 0
-          },
-          {
-            "id": "north_arrival",
-            "x": 3653,
-            "y": 435,
-            "heading": 180
-          },
-          {
-            "id": "south_arrival",
-            "x": 6967,
-            "y": 3781,
             "heading": 0
           }
         ]
@@ -861,27 +834,13 @@
         "materialOutput": 9,
         "decorationOutput": 12,
         "spawnOutput": 14,
-        "portals": [
-          {
-            "id": "north",
-            "x": 4036,
-            "y": 1100,
-            "width": 159,
-            "height": 172
-          }
-        ],
+        "portals": [],
         "playerSpawns": [
           {
             "id": "start",
             "x": 4160,
             "y": 4176,
             "heading": 0
-          },
-          {
-            "id": "north_arrival",
-            "x": 4038,
-            "y": 1229,
-            "heading": 180
           }
         ],
         "spawnProfiles": [
@@ -2673,26 +2632,12 @@
         "materialOutput": 6,
         "spawnOutput": 8,
         "decorationOutput": 9,
-        "portals": [
-          {
-            "id": "north",
-            "x": 509,
-            "y": 7884,
-            "width": 255,
-            "height": 186
-          }
-        ],
+        "portals": [],
         "playerSpawns": [
           {
             "id": "start",
             "x": 4160,
             "y": 4176,
-            "heading": 0
-          },
-          {
-            "id": "north_arrival",
-            "x": 452,
-            "y": 7759,
             "heading": 0
           }
         ],

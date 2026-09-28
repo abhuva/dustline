@@ -1,5 +1,6 @@
 #pragma once
 #include "cave_layout.h"
+#include "road_network.h"
 #include "spawn_profiles.h"
 
 // Persistent encounter records, not simulated vehicles. Shared with host tests.
@@ -75,6 +76,13 @@ struct enemy_spawns {
             points[out].profile=types?types[cell]:0;
             ++out;
         }
+        count=out;
+    }
+    void exclude_reserved(const road_network* roads) {
+        if(!roads)return;
+        int out=0;
+        for(int i=0;i<count;++i)if(!roads->is_reserved(points[i].x/128,points[i].y/128))
+            points[out++]=points[i];
         count=out;
     }
 private:

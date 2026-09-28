@@ -74,6 +74,7 @@ int recipe_run(int count,uint32_t seed) {
 int recipe_apply_spawns() {
     if(!world_ready || result.status!=mapgen::error::ok || result.type!=mapgen::kind::spawns)return 1;
     spawn_points.generate_recipe(work.layout,result.data,result.auxiliary,last_node.p[0],last_node.p[1],last_node.p[2],last_node.stream);
+    spawn_points.exclude_reserved(&work.roads);
     spawn_ready=true;return 0;
 }
 int recipe_spawn_count() {
@@ -112,8 +113,7 @@ int recipe_connect_portal(int x,int y) {
     return work.roads.connect_portal(work.layout,work.scratch,x,y)?0:1;
 }
 int recipe_apply_exits(int mask) {
-    if(!world_ready || result.type!=mapgen::kind::world)return 0;
-    if(mask && !work.roads.width)return mask;
+    if(!world_ready || (mask && !work.roads.width))return mask;
     int failed=0;
     for(int side=0;side<4;++side)if(mask&(1<<side))
         if(!cardinal_exit::apply(work.layout,work.roads,work.scratch,cardinal_exit::side(side)))failed|=1<<side;
@@ -200,22 +200,28 @@ int main(int argc,char** argv) {
     auto* input=std::fopen(argv[1],"rb"); if(!input) return 3;
     int count=int(std::fread(nodes,sizeof(mapgen::node),mapgen::max_nodes,input)); std::fclose(input);
     int status=recipe_run(count,uint32_t(std::strtoul(argv[2],nullptr,0)));
+    if(!status && argc==8 && argv[7][0]!='-') {
+        input=std::fopen(argv[7],"rb");if(!input)return 3;
+        std::fseek(input,0,SEEK_END);long placement_bytes=std::ftell(input);std::rewind(input);
+        if(placement_bytes==1) {
+            uint8_t mask=0;std::fread(&mask,1,1,input);
+            if(recipe_apply_exits(mask)){std::fclose(input);return 6;}
+        } else {
+            uint16_t portal[2];
+            while(std::fread(portal,sizeof(portal),1,input)==1)
+                if(recipe_connect_portal(portal[0],portal[1])){std::fclose(input);return 6;}
+        }
+        std::fclose(input);metadata[4]=work.layout.signature();metadata[5]=uint32_t(work.layout.floor_count());
+    }
     auto* output=std::fopen(argv[3],"wb"); if(!output) return 4;
     std::fwrite(metadata,sizeof(metadata),1,output);
-    if(!status) std::fwrite(result.data,1,mapgen::cells,output);
+    if(!status) std::fwrite(recipe_cells(),1,mapgen::cells,output);
     if(!status && argc>=5) {
         if(argv[4][0]!='-'){
             input=std::fopen(argv[4],"rb");if(!input){std::fclose(output);return 3;}
             count=int(std::fread(nodes,sizeof(mapgen::node),mapgen::max_nodes,input));std::fclose(input);
             status=recipe_run(count,uint32_t(std::strtoul(argv[2],nullptr,0)));
             if(status || recipe_apply_materials()){std::fprintf(stderr,"material branch failed: %d\\n",status);std::fclose(output);return 5;}
-        }
-        if(argc==8 && argv[7][0]!='-') {
-            input=std::fopen(argv[7],"rb");if(!input){std::fclose(output);return 3;}
-            uint16_t portal[2];
-            while(std::fread(portal,sizeof(portal),1,input)==1)
-                if(recipe_connect_portal(portal[0],portal[1])){std::fclose(input);std::fclose(output);return 6;}
-            std::fclose(input);
         }
         std::fwrite(recipe_ground(),1,4096,output);
         for(int y=0;y<1024;++y)for(int x=0;x<1024;++x){
