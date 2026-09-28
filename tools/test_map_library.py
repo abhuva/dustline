@@ -22,25 +22,28 @@ assert connection_count > 0
 
 broken_world = copy.deepcopy(library)
 broken_world['world']['connections'].pop()
-validate_library(broken_world)
+validate_library(broken_world, release=False)
 assert len(broken_world['world']['connections']) == connection_count - 1
 
-missing_spawn = copy.deepcopy(library)
-missing_spawn['world']['connections'][0]['to']['spawn'] = 'missing'
-validate_library(missing_spawn)
-assert len(missing_spawn['world']['connections']) == connection_count - 1
+bad_side = copy.deepcopy(library)
+bad_side['world']['connections'][0]['b']['side'] = 'north'
+try:
+    validate_library(bad_side, release=False)
+    raise AssertionError('Non-complementary cardinal connection passed validation')
+except ValueError as error:
+    assert 'complementary' in str(error)
 
 disabled = copy.deepcopy(library)
 disabled_id = 'two-rules-radial'
 next(entry for entry in disabled['maps'] if entry['id'] == disabled_id)['includeInGame'] = False
 validate_library(disabled)
 assert disabled_id not in {node['map'] for node in disabled['world']['nodes']}
-assert all(link['from']['map'] != disabled_id and link['to']['map'] != disabled_id
+assert all(link['a']['map'] != disabled_id and link['b']['map'] != disabled_id
            for link in disabled['world']['connections'])
 
 disabled_start = copy.deepcopy(library)
 next(entry for entry in disabled_start['maps'] if entry['id'] == 'wasteland')['includeInGame'] = False
-validate_library(disabled_start)
+validate_library(disabled_start, release=False)
 assert disabled_start['world']['start']['map'] != 'wasteland'
 assert disabled_start['world']['start']['map'] in {entry['id'] for entry in disabled_start['maps']
                                                     if entry['includeInGame']}
@@ -50,10 +53,15 @@ new_entry = copy.deepcopy(next(entry for entry in library['maps'] if entry['id']
 new_entry['id'] = 'new-region'
 new_entry['recipe']['name'] = 'New region'
 new_region['maps'].append(new_entry)
-validate_library(new_region)
+validate_library(new_region, release=False)
 assert any(node['map'] == 'new-region' for node in new_region['world']['nodes'])
-assert all(link['from']['map'] != 'new-region' and link['to']['map'] != 'new-region'
+assert all(link['a']['map'] != 'new-region' and link['b']['map'] != 'new-region'
            for link in new_region['world']['connections'])
+try:
+    validate_library(copy.deepcopy(new_region))
+    raise AssertionError('Disconnected release world passed validation')
+except ValueError as error:
+    assert 'connect every' in str(error)
 
 draft = {
     'id': 'empty-draft',

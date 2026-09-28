@@ -88,7 +88,7 @@ class Handler(SimpleHTTPRequestHandler):
                 self._json(409, {'error': 'The map library changed on disk. Reload before saving.'})
                 return
             library = request.get('library')
-            compiler.validate_library(library)
+            compiler.validate_library(library, release=False)
             encoded = (json.dumps(library, indent=2) + '\n').encode('utf8')
             temporary = LIBRARY_PATH.with_suffix('.json.tmp')
             temporary.write_bytes(encoded)

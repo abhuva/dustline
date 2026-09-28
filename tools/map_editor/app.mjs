@@ -40,7 +40,7 @@ const libraryResponse=await fetch('/api/library');
 if(!libraryResponse.ok)throw new Error(`Could not load the map library (${libraryResponse.status}).`);
 const libraryEnvelope=await libraryResponse.json();
 let library=libraryEnvelope.library,libraryRevision=libraryEnvelope.revision;
-let worldDraft=null,worldPending=null,worldDirty=false;
+let worldDraft=null,worldPending=null,worldDirty=false,worldUndo=[],worldRedo=[];
 const ops = new Map(schema.operations.map(o => [o.id,o]));
 const savedSelection=localStorage.getItem('dustline.map-selection.v1');
 let currentId=library.maps.some(entry=>entry.id===savedSelection)?savedSelection:library.maps[0].id;
@@ -915,30 +915,17 @@ $('close-shop').onclick=()=>$('shop-dialog').close();
 function effectiveWorldMaps(){
   return library.maps.map(entry=>entry.id===currentId&&dirty?{...entry,includeInGame,recipe}:entry).filter(entry=>entry.includeInGame);
 }
-function mapPortalIds(entry){return entry.recipe.portals.map(item=>item.id);}
 function mapPlayerSpawnIds(entry){return entry.recipe.playerSpawns.map(item=>item.id);}
-function portalKey(endpoint){return `${endpoint.map}:${endpoint.portal}`;}
-function reconcileWorld(target){
-  const maps=target.maps.filter(entry=>entry.includeInGame),existing=target.world?.version===2?target.world:{},validMapIds=new Set(maps.map(entry=>entry.id));
-  const validPortals=new Set(maps.flatMap(entry=>mapPortalIds(entry).map(portal=>`${entry.id}:${portal}`))),validSpawns=new Set(maps.flatMap(entry=>mapPlayerSpawnIds(entry).map(spawn=>`${entry.id}:${spawn}`)));
-  const positioned=new Map();for(const node of Array.isArray(existing.nodes)?existing.nodes:[])if(validMapIds.has(node?.map)&&!positioned.has(node.map))positioned.set(node.map,node);
-  const nodes=maps.map((entry,index)=>{const old=positioned.get(entry.id);return {map:entry.id,x:old?.x??80+(index%4)*250,y:old?.y??70+Math.floor(index/4)*210};});
-  const used=new Set(),connections=[];for(const link of Array.isArray(existing.connections)?existing.connections:[]){const key=link?.from?portalKey(link.from):'';
-    if(validPortals.has(key)&&validSpawns.has(`${link?.to?.map}:${link?.to?.spawn}`)&&!used.has(key)){used.add(key);connections.push(clone(link));if(connections.length===256)break;}}
-  const startMap=validMapIds.has(existing.start?.map)?existing.start.map:maps[0]?.id,startEntry=maps.find(entry=>entry.id===startMap),spawnIds=startEntry?mapPlayerSpawnIds(startEntry):[];
-  const startSpawn=validSpawns.has(`${startMap}:${existing.start?.spawn}`)?existing.start.spawn:spawnIds[0];
-  target.world={version:2,start:{map:startMap,spawn:startSpawn},nodes,connections};return target;
-}
 function resetWorldDraft(){
   const snapshot={maps:effectiveWorldMaps().map(clone),world:clone(library.world??{})};reconcileWorld(snapshot);worldDraft=snapshot.world;
-  worldPending=null;worldDirty=false;
+  worldPending=null;worldDirty=false;worldUndo=[];worldRedo=[];
 }
-function worldValidation(){
+function legacyWorldValidation(){
   const maps=effectiveWorldMaps();if(!maps.length)return 'Enable at least one map.';
   const used=new Set();for(const link of worldDraft.connections){const key=portalKey(link.from);if(used.has(key))return `${link.from.map} / ${link.from.portal} has more than one destination.`;used.add(key);}
   return '';
 }
-function renderWorldGraph(){
+function legacyRenderWorldGraph(){
   const maps=effectiveWorldMaps(),byId=new Map(maps.map(entry=>[entry.id,entry])),used=new Set(worldDraft.connections.map(link=>portalKey(link.from)));
   const maxX=Math.max(1200,...worldDraft.nodes.map(node=>node.x+220)),maxY=Math.max(760,...worldDraft.nodes.map(node=>node.y+190));
   for(const id of ['world-wires','world-nodes']){const target=$(id);target.style.width=`${maxX}px`;target.style.height=`${maxY}px`;}
@@ -965,8 +952,52 @@ function renderWorldGraph(){
   const links=worldDraft.connections.map((link,index)=>{const destination=byId.get(link.to.map)?.recipe.playerSpawns.find(spawn=>spawn.id===link.to.spawn),position=destination?` @ ${destination.x},${destination.y}`:'',row=element('div','world-link'),label=element('span','',`${link.from.map} / ${link.from.portal}  →  ${link.to.map} / ${link.to.spawn}${position}`),remove=element('button','','Remove');remove.onclick=()=>{worldDraft.connections.splice(index,1);worldDirty=true;renderWorldGraph();};row.append(label,remove);return row;});
   $('world-links').replaceChildren(...links);const error=worldValidation(),portalCount=maps.reduce((total,entry)=>total+mapPortalIds(entry).length,0),unconnected=portalCount-used.size;$('world-status').textContent=worldPending?`Choose a destination Player Spawn for ${worldPending}.`:error||`${maps.length} regions · ${worldDraft.connections.length} transitions${unconnected?` · ${unconnected} unconnected Portal${unconnected===1?'':'s'}`:' · all Portals connected'}`;$('save-world').disabled=Boolean(error);
 }
-$('world-start').onchange=()=>{worldDraft.start.map=$('world-start').value;worldDraft.start.spawn=mapPlayerSpawnIds(effectiveWorldMaps().find(entry=>entry.id===worldDraft.start.map))[0];worldDirty=true;renderWorldGraph();};
-$('world-start-spawn').onchange=()=>{worldDraft.start.spawn=$('world-start-spawn').value;worldDirty=true;renderWorldGraph();};
+const cardinalSides=['north','east','south','west'];
+const oppositeSide={north:'south',east:'west',south:'north',west:'east'};
+const cardinalDelta={north:[0,-1],east:[1,0],south:[0,1],west:[-1,0]};
+const sideKey=endpoint=>`${endpoint.map}:${endpoint.side}`;
+
+function reconcileWorld(target){
+  const maps=target.maps.filter(entry=>entry.includeInGame),existing=target.world?.version===3?target.world:{},validMapIds=new Set(maps.map(entry=>entry.id));
+  const positioned=new Map();for(const node of Array.isArray(existing.nodes)?existing.nodes:[])if(validMapIds.has(node?.map)&&!positioned.has(node.map))positioned.set(node.map,node);
+  const nodes=maps.map((entry,index)=>{const old=positioned.get(entry.id);return {map:entry.id,x:old?.x??80+(index%4)*250,y:old?.y??70+Math.floor(index/4)*210};});
+  const used=new Set(),connections=[];
+  for(const link of Array.isArray(existing.connections)?existing.connections:[]){const a=link?.a,b=link?.b,keyA=a?sideKey(a):'',keyB=b?sideKey(b):'';
+    if(validMapIds.has(a?.map)&&validMapIds.has(b?.map)&&a.map!==b.map&&cardinalSides.includes(a.side)&&b.side===oppositeSide[a.side]&&!used.has(keyA)&&!used.has(keyB)){used.add(keyA);used.add(keyB);connections.push(clone(link));if(connections.length===128)break;}}
+  const startMap=validMapIds.has(existing.start?.map)?existing.start.map:maps[0]?.id,startEntry=maps.find(entry=>entry.id===startMap),spawnIds=startEntry?mapPlayerSpawnIds(startEntry):[];
+  const startSpawn=spawnIds.includes(existing.start?.spawn)?existing.start.spawn:spawnIds[0];
+  target.world={version:3,start:{map:startMap,spawn:startSpawn},nodes,connections};return target;
+}
+function derivedWorldGrid(maps){
+  const used=new Set(),coordinates=new Map(),adjacency=new Map(maps.map(entry=>[entry.id,[]]));
+  for(const link of worldDraft.connections){if(!link?.a||!link?.b||link.a.map===link.b.map||link.b.side!==oppositeSide[link.a.side])return {error:'Connections must join complementary sides on different regions.'};for(const endpoint of [link.a,link.b]){const key=sideKey(endpoint);if(used.has(key))return {error:`${endpoint.map} / ${endpoint.side} has more than one connection.`};used.add(key);}const [dx,dy]=cardinalDelta[link.a.side];adjacency.get(link.a.map)?.push([link.b.map,dx,dy]);adjacency.get(link.b.map)?.push([link.a.map,-dx,-dy]);}
+  let component=0;for(const root of [worldDraft.start.map,...maps.map(entry=>entry.id)]){if(coordinates.has(root)||!adjacency.has(root))continue;coordinates.set(root,[0,0,component]);const owners=new Map([['0,0',root]]),queue=[root];while(queue.length){const source=queue.shift(),[x,y]=coordinates.get(source);for(const [target,dx,dy] of adjacency.get(source)){const expected=[x+dx,y+dy],old=coordinates.get(target);if(old){if(old[2]===component&&(old[0]!==expected[0]||old[1]!==expected[1]))return {error:'Connections create an inconsistent cardinal cycle.'};continue;}const key=expected.join(','),owner=owners.get(key);if(owner&&owner!==target)return {error:`${owner} and ${target} overlap on the derived grid.`};coordinates.set(target,[...expected,component]);owners.set(key,target);queue.push(target);}}component++;}
+  return {used,coordinates,components:component};
+}
+function worldValidation(){const maps=effectiveWorldMaps();if(!maps.length)return 'Enable at least one map.';return derivedWorldGrid(maps).error??'';}
+function rememberWorld(){worldUndo.push(clone(worldDraft));if(worldUndo.length>64)worldUndo.shift();worldRedo=[];worldDirty=true;}
+function restoreWorld(source,destination){if(!source.length)return;destination.push(clone(worldDraft));worldDraft=source.pop();worldPending=null;worldDirty=true;renderWorldGraph();}
+function renderWorldGraph(){
+  const maps=effectiveWorldMaps(),byId=new Map(maps.map(entry=>[entry.id,entry])),derived=derivedWorldGrid(maps),used=derived.used??new Set();
+  const maxX=Math.max(1200,...worldDraft.nodes.map(node=>node.x+220)),maxY=Math.max(760,...worldDraft.nodes.map(node=>node.y+190));
+  for(const id of ['world-wires','world-nodes']){const target=$(id);target.style.width=`${maxX}px`;target.style.height=`${maxY}px`;}
+  const svg=$('world-wires');svg.setAttribute('viewBox',`0 0 ${maxX} ${maxY}`);svg.replaceChildren();
+  const endpointPoint=endpoint=>{const layout=worldDraft.nodes.find(node=>node.map===endpoint.map),points={north:[88,0],east:[176,55],south:[88,110],west:[0,55]},point=points[endpoint.side];return {x:layout.x+point[0],y:layout.y+point[1]};};
+  for(const link of worldDraft.connections){const a=endpointPoint(link.a),b=endpointPoint(link.b),path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',`M${a.x},${a.y} C${a.x+(b.x-a.x)*.45},${a.y} ${b.x-(b.x-a.x)*.45},${b.y} ${b.x},${b.y}`);path.classList.add('world-wire');svg.append(path);}
+  const nodeElements=worldDraft.nodes.map(layout=>{const entry=byId.get(layout.map),node=element('div',`world-node${layout.map===worldDraft.start.map?' start':''}`);node.style.left=`${layout.x}px`;node.style.top=`${layout.y}px`;
+    const heading=element('div','world-node-heading'),grid=derived.coordinates?.get(entry.id);heading.append(element('strong','',entry.recipe.name),element('small','',grid?`${entry.id} [${grid[0]},${grid[1]}]`:entry.id));
+    heading.onpointerdown=event=>{if(event.button!==0)return;event.preventDefault();const startX=event.clientX,startY=event.clientY,originX=layout.x,originY=layout.y,pointer=event.pointerId;const move=e=>{if(e.pointerId!==pointer)return;node.style.left=`${Math.max(0,originX+e.clientX-startX)}px`;node.style.top=`${Math.max(0,originY+e.clientY-startY)}px`;};const end=e=>{if(e.pointerId!==pointer)return;window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);const nextX=Math.round(Math.max(0,originX+e.clientX-startX)),nextY=Math.round(Math.max(0,originY+e.clientY-startY));if(nextX!==originX||nextY!==originY){rememberWorld();layout.x=nextX;layout.y=nextY;}renderWorldGraph();};window.addEventListener('pointermove',move);window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);};
+    const ports=element('div','world-gates');for(const side of cardinalSides){const endpoint={map:entry.id,side},key=sideKey(endpoint),button=element('button',`world-gate cardinal ${side}${used.has(key)?' used':''}${worldPending===key?' pending':''}`,side[0].toUpperCase());button.title=`${entry.id} ${side}`;button.onclick=()=>{if(used.has(key)){$('world-status').textContent='That side is already connected. Remove its connection below first.';return;}if(worldPending===key){worldPending=null;renderWorldGraph();return;}if(!worldPending){worldPending=key;renderWorldGraph();return;}const split=worldPending.lastIndexOf(':'),map=worldPending.slice(0,split),pendingSide=worldPending.slice(split+1);if(map===entry.id){$('world-status').textContent='Choose a different region.';return;}if(side!==oppositeSide[pendingSide]){$('world-status').textContent=`Choose the ${oppositeSide[pendingSide]} side of another region.`;return;}const id=`${map}_${pendingSide}_${entry.id}_${side}`.replace(/[^a-z0-9_-]+/g,'-');rememberWorld();worldDraft.connections.push({id,a:{map,side:pendingSide},b:{map:entry.id,side},requirement:null});worldPending=null;renderWorldGraph();};ports.append(button);}node.append(heading,ports);return node;});
+  $('world-nodes').replaceChildren(...nodeElements);
+  const start=$('world-start');start.replaceChildren(...maps.map(entry=>{const option=element('option','',entry.recipe.name);option.value=entry.id;return option;}));start.value=worldDraft.start.map??'';const startEntry=byId.get(worldDraft.start.map),startSpawn=$('world-start-spawn');startSpawn.replaceChildren(...(startEntry?.recipe.playerSpawns??[]).map(spawn=>{const option=element('option','',`${spawn.id} @ ${spawn.x},${spawn.y}`);option.value=spawn.id;return option;}));startSpawn.value=worldDraft.start.spawn;
+  const links=worldDraft.connections.map((link,index)=>{const row=element('div','world-link'),label=element('span','',`${link.a.map} / ${link.a.side}  ↔  ${link.b.map} / ${link.b.side}`),remove=element('button','','Remove');remove.onclick=()=>{rememberWorld();worldDraft.connections.splice(index,1);renderWorldGraph();};row.append(label,remove);return row;});$('world-links').replaceChildren(...links);
+  const error=derived.error??'',unconnected=maps.length*4-used.size;$('world-status').textContent=worldPending?`Choose the complementary side for ${worldPending}.`:error||`${maps.length} regions · ${worldDraft.connections.length} reciprocal connections · ${unconnected} free sides`;$('save-world').disabled=Boolean(error);$('world-undo').disabled=!worldUndo.length;$('world-redo').disabled=!worldRedo.length;
+}
+
+$('world-start').onchange=()=>{rememberWorld();worldDraft.start.map=$('world-start').value;worldDraft.start.spawn=mapPlayerSpawnIds(effectiveWorldMaps().find(entry=>entry.id===worldDraft.start.map))[0];renderWorldGraph();};
+$('world-start-spawn').onchange=()=>{rememberWorld();worldDraft.start.spawn=$('world-start-spawn').value;renderWorldGraph();};
+$('world-undo').onclick=()=>restoreWorld(worldUndo,worldRedo);
+$('world-redo').onclick=()=>restoreWorld(worldRedo,worldUndo);
 $('world-map').onclick=()=>{resetWorldDraft();renderWorldGraph();$('world-dialog').showModal();};
 $('close-world').onclick=()=>{if(!worldDirty||window.confirm('Discard unsaved world-map changes?'))$('world-dialog').close();};
 $('save-world').onclick=async()=>{
